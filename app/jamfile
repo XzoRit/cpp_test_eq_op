@@ -1,0 +1,23 @@
+project app
+    : requirements <library>/lib//lib
+    ;
+
+constant sources
+    : [ glob *.cpp ]
+    ;
+
+exe exe
+    : $(sources)
+    : <library>/boost//program_options
+    ;
+
+import testing
+    ;
+
+unit-test run
+    : exe
+    : <testing.arg>"--help"
+    ;
+
+always run
+    ;

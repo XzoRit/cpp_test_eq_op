@@ -1,0 +1,47 @@
+constant inc_dir
+    : .
+    ;
+
+constant src_dir
+    : $(inc_dir)/lib
+    ;
+
+project lib
+    : usage-requirements <include>$(inc_dir)
+    ;
+
+import boost
+    ;
+
+boost.use-project
+    ;
+
+constant test_sources
+    : [ glob $(src_dir)/*.test.cpp ]
+    ;
+
+constant sources
+    : [ glob $(src_dir)/*.cpp : $(test_sources) ]
+    ;
+
+lib lib
+    : $(sources)
+    : <include>$(inc_dir)
+    ;
+
+import boost
+    ;
+
+boost.use-project
+    ;
+
+import testing
+    ;
+
+run $(test_sources)
+    : --color_output=false
+    :
+    : <library>lib
+      <library>/boost//unit_test_framework
+    : test
+    ;

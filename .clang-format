@@ -1,0 +1,10 @@
+---
+Language:        Cpp
+BasedOnStyle:    Microsoft
+PointerAlignment: Left
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackArguments: false
+BinPackParameters: false
+...
