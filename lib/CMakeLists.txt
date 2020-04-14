@@ -12,6 +12,12 @@ add_library(
   lib
 )
 
+target_compile_features(
+  lib
+  PRIVATE
+    cxx_std_17
+)
+
 target_sources(
   lib
   PRIVATE
@@ -33,6 +39,12 @@ add_library(
 
 add_executable(
   lib_test
+)
+
+target_compile_features(
+  lib_test
+  PRIVATE
+    cxx_std_17
 )
 
 target_sources(
