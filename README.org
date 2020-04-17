@@ -1,4 +1,4 @@
-[[https://travis-ci.org/XzoRit/cpp_starter][https://travis-ci.org/XzoRit/cpp_starter.svg?branch=master]]
+[[https://travis-ci.org/XzoRit/cpp_starter][https://travis-ci.org/XzoRit/cpp_test_eq_op.svg?branch=master]]
 * template for c++ projects
 This folder contains the project structure.
 Clone this repository delete the .git folder rename the project folder to your project name.
