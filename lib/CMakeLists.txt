@@ -50,7 +50,8 @@ target_compile_features(
 target_sources(
   lib_test
   PRIVATE
-  "${src_dir}/lib.test.cpp"
+  "${src_dir}/boost_fusion.test.cpp"
+  "${src_dir}/cpp_17.test.cpp"
   "${src_dir}/main.test.cpp"
 )
 
