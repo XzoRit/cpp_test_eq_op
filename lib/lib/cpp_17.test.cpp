@@ -75,6 +75,7 @@ constexpr auto reverse(T&& t)
 {
     return reverse_impl(std::forward<T>(t), std::make_index_sequence<std::tuple_size<TT>::value>());
 }
+
 template <class Tuple, std::size_t... Is>
 constexpr decltype(auto) make_tuple_from(Tuple&& a, std::index_sequence<Is...>)
 {
