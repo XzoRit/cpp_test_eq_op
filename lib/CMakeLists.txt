@@ -15,7 +15,7 @@ add_library(
 target_compile_features(
   lib
   PRIVATE
-    cxx_std_17
+    cxx_std_11
 )
 
 target_sources(
@@ -41,12 +41,6 @@ add_executable(
   lib_test
 )
 
-target_compile_features(
-  lib_test
-  PRIVATE
-    cxx_std_17
-)
-
 target_sources(
   lib_test
   PRIVATE
@@ -55,10 +49,15 @@ target_sources(
   "${src_dir}/main.test.cpp"
 )
 
+target_compile_features(
+  lib_test
+  PRIVATE
+    cxx_std_11
+)
+
 target_link_libraries(
   lib_test
   PRIVATE
-    lib::lib
     Boost::unit_test_framework
 )
 

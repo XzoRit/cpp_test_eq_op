@@ -1,45 +1,63 @@
 #include <boost/test/unit_test.hpp>
 
-#include <boost/fusion/algorithm/iteration/for_each.hpp>
-#include <boost/fusion/algorithm/query/all.hpp>
-#include <boost/fusion/algorithm/transformation/join.hpp>
-#include <boost/fusion/algorithm/transformation/push_back.hpp>
-#include <boost/fusion/algorithm/transformation/zip.hpp>
-#include <boost/fusion/container/generation/make_vector.hpp>
-#include <boost/fusion/container/vector.hpp>
-#include <boost/fusion/functional/invocation/invoke.hpp>
-#include <boost/fusion/iterator/advance.hpp>
-#include <boost/fusion/iterator/deref.hpp>
-#include <boost/fusion/iterator/distance.hpp>
-#include <boost/fusion/iterator/equal_to.hpp>
-#include <boost/fusion/iterator/next.hpp>
-#include <boost/fusion/sequence/comparison.hpp>
-#include <boost/fusion/sequence/comparison/equal_to.hpp>
-#include <boost/fusion/sequence/intrinsic/at_c.hpp>
-#include <boost/fusion/sequence/intrinsic/begin.hpp>
-#include <boost/fusion/sequence/intrinsic/end.hpp>
-#include <boost/fusion/sequence/intrinsic/front.hpp>
-#include <boost/fusion/sequence/intrinsic/size.hpp>
-#include <boost/fusion/view/flatten_view.hpp>
-#include <boost/fusion/view/iterator_range.hpp>
-#include <boost/fusion/view/joint_view.hpp>
-#include <boost/fusion/view/nview.hpp>
-#include <boost/fusion/view/single_view.hpp>
-#include <boost/fusion/view/zip_view.hpp>
+#include <boost/fusion/algorithm.hpp>
+#include <boost/fusion/container.hpp>
+#include <boost/fusion/functional.hpp>
+#include <boost/fusion/view.hpp>
 
 #include <boost/smart_ptr/make_unique.hpp>
 
 #include <boost/functional/value_factory.hpp>
 
-#include <cassert>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
+#include <boost/mp11.hpp>
 
 namespace fs = boost::fusion;
+namespace mp = boost::mp11;
+
+namespace impl
+{
+template <typename T, T Begin, T Steps, bool Increase, T Delta = T(1), typename = mp::make_integer_sequence<T, Steps>>
+struct generate_range;
+
+template <typename T, T B, T S, T D, T... Ns>
+struct generate_range<T, B, S, true, D, mp::integer_sequence<T, Ns...>>
+{
+    using type = mp::integer_sequence<T, B + D * Ns...>;
+};
+
+template <typename T, T B, T S, T D, T... Ns>
+struct generate_range<T, B, S, false, D, mp::integer_sequence<T, Ns...>>
+{
+    using type = mp::integer_sequence<T, B - D * Ns...>;
+};
+} // namespace impl
+
+template <typename T, T N, T M>
+using make_integer_range = typename impl::generate_range<T, N, (N <= M) ? (M - N) : (N - M), (N <= M)>::type;
+
+template <std::size_t N, std::size_t M>
+using make_index_range = make_integer_range<std::size_t, N, M>;
+
+namespace impl
+{
+template <class Container>
+struct emplace_back_t
+{
+    template <class... A>
+    void operator()(A&&... a)
+    {
+        container.emplace_back(std::forward<typename std::decay<A>::type>(a)...);
+    }
+    Container& container{};
+};
+} // namespace impl
+
+template <class Tuple, class Container>
+void emplace_back_from_tuple(Tuple&& args, Container& out)
+{
+    impl::emplace_back_t<Container> emp{out};
+    fs::invoke(emp, args);
+}
 
 struct print
 {
@@ -58,8 +76,6 @@ struct print
     }
 };
 
-namespace boost_fusion
-{
 struct S
 {
     S(std::unique_ptr<int> cc)
@@ -110,6 +126,8 @@ std::ostream& operator<<(std::ostream& o, const S& a)
     return o;
 }
 
+namespace boost_fusion
+{
 template <std::size_t N, class Tuple>
 constexpr auto drop_front(Tuple&& a) -> decltype(
     fs::iterator_range<typename fs::result_of::
@@ -149,24 +167,6 @@ constexpr auto take_front(Tuple&& a) -> decltype(
                                             N>::type{a}};
 }
 
-template <class Container>
-struct emplace_back_t
-{
-    template <class... A>
-    void operator()(A&&... a)
-    {
-        container.emplace_back(std::forward<typename std::decay<A>::type>(a)...);
-    }
-    Container& container{};
-};
-
-template <class Type, class Tuple>
-void emplace_back_from_tuple(Tuple&& args, std::vector<Type>& out)
-{
-    emplace_back_t<std::vector<Type>> emp{out};
-    fs::invoke(emp, args);
-}
-
 template <std::size_t N, class Tuple>
 auto slide(Tuple&& a, Tuple&& b) -> decltype(fs::join(
     fs::join(take_front<N>(a),
@@ -199,7 +199,7 @@ struct slide_all_t
     {
         using decayed = typename std::decay<Tuple>::type;
         const auto& s = slide<N - 1>(std::forward<decayed>(a), std::forward<decayed>(b));
-        emplace_back_from_tuple<typename Container::value_type>(s, container);
+        emplace_back_from_tuple(s, container);
         slide_all_t<N - 1>{}(a, b, container);
     }
 };
@@ -278,10 +278,10 @@ BOOST_AUTO_TEST_CASE(boost_fusion_idea)
     }
     {
         std::vector<S> vec{};
-        emplace_back_from_tuple<S>(fs::make_vector(3, "2"), vec);
+        emplace_back_from_tuple(fs::make_vector(3, "2"), vec);
         BOOST_TEST(vec[0] == (S{3, "2"}));
 
-        emplace_back_from_tuple<S>(fs::make_vector(3, "2", boost::make_unique<int>(1)), vec);
+        emplace_back_from_tuple(fs::make_vector(3, "2", boost::make_unique<int>(1)), vec);
         BOOST_TEST(vec[0] == (S{3, "2"}));
         BOOST_TEST(vec[1] == (S{3, "2", boost::make_unique<int>(1)}));
     }
@@ -317,35 +317,8 @@ BOOST_AUTO_TEST_CASE(boost_fusion_idea)
 }
 } // namespace boost_fusion
 
-#include <boost/mp11.hpp>
-
-namespace mp = boost::mp11;
-
 namespace with_mp11
 {
-namespace impl
-{
-template <typename T, T Begin, T Steps, bool Increase, T Delta = T(1), typename = mp::make_integer_sequence<T, Steps>>
-struct generate_range;
-
-template <typename T, T B, T S, T D, T... Ns>
-struct generate_range<T, B, S, true, D, mp::integer_sequence<T, Ns...>>
-{
-    using type = mp::integer_sequence<T, B + D * Ns...>;
-};
-
-template <typename T, T B, T S, T D, T... Ns>
-struct generate_range<T, B, S, false, D, mp::integer_sequence<T, Ns...>>
-{
-    using type = mp::integer_sequence<T, B - D * Ns...>;
-};
-} // namespace impl
-
-template <typename T, T N, T M>
-using make_integer_range = typename impl::generate_range<T, N, (N <= M) ? (M - N) : (N - M), (N <= M)>::type;
-
-template <std::size_t N, std::size_t M>
-using make_index_range = make_integer_range<std::size_t, N, M>;
 } // namespace with_mp11
 
 namespace with_mp11
@@ -353,32 +326,33 @@ namespace with_mp11
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
-decltype(auto) drop_front(const Tuple& a, mp::index_sequence<Is...>)
+constexpr auto drop_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
 {
     return fs::as_nview<Is...>(a);
 }
 
 template <std::size_t N, class Tuple, std::size_t... Is>
-decltype(auto) take_front(const Tuple& a, mp::index_sequence<Is...>)
+constexpr auto take_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
 {
     return fs::as_nview<Is...>(a);
 }
 } // namespace impl
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-constexpr decltype(auto) drop_front(Tuple&& a)
+constexpr auto drop_front(Tuple&& a)
+    -> decltype(impl::drop_front<N>(a, make_index_range<N, fs::result_of::size<TT>::value>()))
 {
     return impl::drop_front<N>(a, make_index_range<N, fs::result_of::size<TT>::value>());
 }
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-constexpr decltype(auto) take_front(const Tuple& a)
+constexpr auto take_front(const Tuple& a) -> decltype(impl::take_front<N>(a, mp::make_index_sequence<N>()))
 {
     return impl::take_front<N>(a, mp::make_index_sequence<N>());
 }
 
 template <std::size_t N, class Tuple>
-auto slide(const Tuple& a, const Tuple& b)
+constexpr auto slide(const Tuple& a, const Tuple& b)
     -> decltype(fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a)))
 {
     return fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a));
@@ -412,7 +386,7 @@ BOOST_AUTO_TEST_CASE(drop_with_mp11)
     BOOST_TEST((drop_front<3>(a) == (fs::make_vector())));
 }
 
-BOOST_AUTO_TEST_CASE(slide_with_mp11)
+BOOST_AUTO_TEST_CASE(slide_n_with_mp11)
 {
     auto a = fs::make_vector(boost::make_unique<int>(1), "2", 3, 4.0);
     auto b = fs::make_vector(boost::make_unique<int>(5), "6", 7, 8.0);
