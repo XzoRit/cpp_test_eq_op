@@ -52,7 +52,7 @@ target_sources(
 target_compile_features(
   lib_test
   PRIVATE
-    cxx_std_11
+    cxx_std_17
 )
 
 target_link_libraries(

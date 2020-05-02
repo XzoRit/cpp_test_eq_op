@@ -1,5 +1,3 @@
-#include <lib/lib.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <cassert>

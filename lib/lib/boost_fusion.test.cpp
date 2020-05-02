@@ -3,6 +3,7 @@
 #include <boost/fusion/algorithm.hpp>
 #include <boost/fusion/container.hpp>
 #include <boost/fusion/functional.hpp>
+#include <boost/fusion/tuple.hpp>
 #include <boost/fusion/view.hpp>
 
 #include <boost/smart_ptr/make_unique.hpp>
@@ -62,12 +63,12 @@ void emplace_back_from_tuple(Tuple&& args, Container& out)
 struct print
 {
     template <class A>
-    void operator()(const A& a)
+    void operator()(const A& a) const
     {
         std::cout << a << ' ';
     }
     template <class A>
-    void operator()(const std::unique_ptr<A>& a)
+    void operator()(const std::unique_ptr<A>& a) const
     {
         if (a)
             std::cout << "*uptr=" << *a << ' ';
@@ -75,6 +76,14 @@ struct print
             std::cout << "nullptr ";
     }
 };
+
+template <class A>
+void print_all(const A& a)
+{
+    const print& printer{};
+    for (const auto& it : a)
+        printer(it);
+}
 
 struct S
 {
@@ -325,6 +334,29 @@ namespace with_mp11
 {
 namespace impl
 {
+template <class Container>
+struct emplace_back_t
+{
+    template <class... A>
+    void operator()(A&&... a)
+    {
+        container.emplace_back(std::forward<A>(a)...);
+    }
+    Container& container{};
+};
+} // namespace impl
+
+template <class Tuple, class Container>
+void emplace_back_from_tuple(Tuple&& args, Container& out)
+{
+    impl::emplace_back_t<Container> emp{out};
+    fs::invoke(emp, args);
+}
+} // namespace with_mp11
+namespace with_mp11
+{
+namespace impl
+{
 template <std::size_t N, class Tuple, std::size_t... Is>
 constexpr auto drop_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
 {
@@ -356,6 +388,23 @@ constexpr auto slide(const Tuple& a, const Tuple& b)
     -> decltype(fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a)))
 {
     return fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a));
+}
+
+template <class Tuple, class TT = typename std::remove_reference<Tuple>::type, std::size_t... Is>
+auto slide_all_impl(Tuple&& a, Tuple&& b, std::vector<TT>& out, mp::index_sequence<Is...>) -> void
+{
+    int dummy[] = {0, ((void)out.push_back(slide<Is>(std::forward<TT>(a), std::forward<TT>(b))), 0)...};
+    static_cast<void>(dummy);
+}
+
+template <class Tuple, class TT = typename std::remove_reference<Tuple>::type>
+auto slide_all(Tuple&& a, Tuple&& b) -> std::vector<TT>
+{
+    constexpr auto tuple_size{fs::tuple_size<TT>::value};
+    std::vector<TT> slided{};
+    slided.reserve(tuple_size);
+    slide_all_impl(a, b, slided, mp::make_index_sequence<tuple_size>{});
+    return slided;
 }
 
 BOOST_AUTO_TEST_CASE(take_with_mp11)
@@ -399,5 +448,19 @@ BOOST_AUTO_TEST_CASE(slide_n_with_mp11)
     BOOST_TEST((slide<2>(a, b) == fs::join(fs::join(fs::as_nview<0, 1>(a), fs::as_nview<2>(b)), fs::as_nview<3>(a))));
     fs::for_each(slide<3>(a, b), print{});
     BOOST_TEST((slide<3>(a, b) == fs::join(fs::as_nview<0, 1, 2>(a), fs::as_nview<3>(b))));
+}
+
+BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
+{
+    auto a = fs::make_vector(1, std::string{"2"}, 3, 4.0);
+    auto b = fs::make_vector(5, std::string{"6"}, 7, 8.0);
+
+    const auto& c{slide_all(a, b)};
+    print_all(c);
+    BOOST_TEST(c.size() == 4);
+    BOOST_TEST(c[0] == fs::make_vector(5, std::string{"2"}, 3, 4.0));
+    BOOST_TEST(c[1] == fs::make_vector(1, std::string{"6"}, 3, 4.0));
+    BOOST_TEST(c[2] == fs::make_vector(1, std::string{"2"}, 7, 4.0));
+    BOOST_TEST(c[3] == fs::make_vector(1, std::string{"2"}, 3, 8.0));
 }
 } // namespace with_mp11
