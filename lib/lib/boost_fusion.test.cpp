@@ -12,8 +12,12 @@
 
 #include <boost/mp11.hpp>
 
+#include <boost/functional/value_factory.hpp>
+
 namespace fs = boost::fusion;
 namespace mp = boost::mp11;
+
+using namespace std::string_literals;
 
 namespace impl
 {
@@ -407,9 +411,47 @@ auto slide_all(Tuple&& a, Tuple&& b) -> std::vector<TT>
     return slided;
 }
 
+template <class A, class Tuples>
+auto make_from_tuples(const Tuples& tuples) -> std::vector<A>
+{
+    std::vector<A> as{};
+    as.reserve(tuples.size());
+    for (const auto& tuple : tuples)
+        as.push_back(fs::invoke(boost::value_factory<A>{}, tuple));
+    return as;
+}
+
+struct A
+{
+    A(int aa, std::string bb, int cc, double dd)
+        : a{aa}
+        , b{bb}
+        , c{cc}
+        , d{dd}
+    {
+    }
+    int a{};
+    std::string b{};
+    int c{};
+    double d{};
+};
+bool operator==(const A& a, const A& b)
+{
+    return std::tie(a.a, a.b, a.c, a.d) == std::tie(b.a, b.b, b.c, b.d);
+}
+bool operator!=(const A& a, const A& b)
+{
+    return !(a == b);
+}
+std::ostream& operator<<(std::ostream& out, const A& a)
+{
+    out << "a=" << a.a << " b=" << a.b << " c=" << a.c << " d=" << a.d;
+    return out;
+}
+
 BOOST_AUTO_TEST_CASE(take_with_mp11)
 {
-    auto a = fs::make_vector(boost::make_unique<int>(0), std::string{"1"}, 2);
+    auto a = fs::make_vector(boost::make_unique<int>(0), "1"s, 2);
 
     fs::for_each(take_front<0>(a), print{});
     BOOST_TEST((take_front<0>(a) == (fs::make_vector())));
@@ -423,7 +465,7 @@ BOOST_AUTO_TEST_CASE(take_with_mp11)
 
 BOOST_AUTO_TEST_CASE(drop_with_mp11)
 {
-    auto a = fs::make_vector(boost::make_unique<int>(0), std::string{"1"}, 2);
+    auto a = fs::make_vector(boost::make_unique<int>(0), "1"s, 2);
 
     fs::for_each(drop_front<0>(a), print{});
     BOOST_TEST((drop_front<0>(a) == (fs::as_nview<0, 1, 2>(a))));
@@ -452,15 +494,27 @@ BOOST_AUTO_TEST_CASE(slide_n_with_mp11)
 
 BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
 {
-    auto a = fs::make_vector(1, std::string{"2"}, 3, 4.0);
-    auto b = fs::make_vector(5, std::string{"6"}, 7, 8.0);
+    auto a = fs::make_vector(1, "2"s, 3, 4.0);
+    auto b = fs::make_vector(5, "6"s, 7, 8.0);
 
     const auto& c{slide_all(a, b)};
     print_all(c);
     BOOST_TEST(c.size() == 4);
-    BOOST_TEST(c[0] == fs::make_vector(5, std::string{"2"}, 3, 4.0));
-    BOOST_TEST(c[1] == fs::make_vector(1, std::string{"6"}, 3, 4.0));
-    BOOST_TEST(c[2] == fs::make_vector(1, std::string{"2"}, 7, 4.0));
-    BOOST_TEST(c[3] == fs::make_vector(1, std::string{"2"}, 3, 8.0));
+    BOOST_TEST(c[0] == fs::make_vector(5, "2"s, 3, 4.0));
+    BOOST_TEST(c[1] == fs::make_vector(1, "6"s, 3, 4.0));
+    BOOST_TEST(c[2] == fs::make_vector(1, "2"s, 7, 4.0));
+    BOOST_TEST(c[3] == fs::make_vector(1, "2"s, 3, 8.0));
+}
+
+BOOST_AUTO_TEST_CASE(make_from_slided_tuples_with_mp11)
+{
+    auto a = fs::make_vector(1, "2"s, 3, 4.0);
+    auto b = fs::make_vector(5, "6"s, 7, 8.0);
+    const auto& c = make_from_tuples<A>(slide_all(a, b));
+    BOOST_TEST(c.size() == 4);
+    BOOST_TEST((c[0] == A{5, "2"s, 3, 4.0}));
+    BOOST_TEST((c[1] == A{1, "6"s, 3, 4.0}));
+    BOOST_TEST((c[2] == A{1, "2"s, 7, 4.0}));
+    BOOST_TEST((c[3] == A{1, "2"s, 3, 8.0}));
 }
 } // namespace with_mp11
