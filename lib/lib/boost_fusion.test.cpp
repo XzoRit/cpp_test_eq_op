@@ -411,33 +411,56 @@ auto slide_all(Tuple&& a, Tuple&& b) -> std::vector<TT>
     return slided;
 }
 
+template <class A, class Tuple>
+constexpr auto make_from_tuple(const Tuple& tuple) -> A
+{
+    return fs::invoke(boost::value_factory<A>{}, tuple);
+}
+
 template <class A, class Tuples>
 auto make_from_tuples(const Tuples& tuples) -> std::vector<A>
 {
     std::vector<A> as{};
     as.reserve(tuples.size());
     for (const auto& tuple : tuples)
-        as.push_back(fs::invoke(boost::value_factory<A>{}, tuple));
+        as.push_back(make_from_tuple<A>(tuple));
     return as;
+}
+
+template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
+auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
+{
+    const auto& origin{with_mp11::make_from_tuple<A>(std::forward<TT>(a))};
+    const auto& c{make_from_tuples<A>(slide_all(a, b))};
+    for (const auto& it : c)
+        if (origin == it)
+            return false;
+    return true;
 }
 
 struct A
 {
-    A(int aa, std::string bb, int cc, double dd)
+    A(int aa, std::string bb, int cc, double dd, std::unique_ptr<int> ee = nullptr)
         : a{aa}
         , b{bb}
         , c{cc}
         , d{dd}
+        , e{std::move(ee)}
     {
     }
     int a{};
     std::string b{};
     int c{};
     double d{};
+    std::unique_ptr<int> e{};
 };
 bool operator==(const A& a, const A& b)
 {
-    return std::tie(a.a, a.b, a.c, a.d) == std::tie(b.a, b.b, b.c, b.d);
+    if (a.e && b.e)
+        return std::tie(a.a, a.b, a.c, a.d, *a.e) == std::tie(b.a, b.b, b.c, b.d, *b.e);
+    if (!a.e && !b.e)
+        return std::tie(a.a, a.b, a.c, a.d) == std::tie(b.a, b.b, b.c, b.d);
+    return false;
 }
 bool operator!=(const A& a, const A& b)
 {
@@ -446,6 +469,8 @@ bool operator!=(const A& a, const A& b)
 std::ostream& operator<<(std::ostream& out, const A& a)
 {
     out << "a=" << a.a << " b=" << a.b << " c=" << a.c << " d=" << a.d;
+    if (a.e)
+        out << " *e=" << *a.e;
     return out;
 }
 
@@ -499,6 +524,7 @@ BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
 
     const auto& c{slide_all(a, b)};
     print_all(c);
+
     BOOST_TEST(c.size() == 4);
     BOOST_TEST(c[0] == fs::make_vector(5, "2"s, 3, 4.0));
     BOOST_TEST(c[1] == fs::make_vector(1, "6"s, 3, 4.0));
@@ -506,15 +532,34 @@ BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
     BOOST_TEST(c[3] == fs::make_vector(1, "2"s, 3, 8.0));
 }
 
-BOOST_AUTO_TEST_CASE(make_from_slided_tuples_with_mp11)
+BOOST_AUTO_TEST_CASE(make_from_tuples_with_mp11)
 {
     auto a = fs::make_vector(1, "2"s, 3, 4.0);
     auto b = fs::make_vector(5, "6"s, 7, 8.0);
+
     const auto& c = make_from_tuples<A>(slide_all(a, b));
+    print_all(c);
+
     BOOST_TEST(c.size() == 4);
     BOOST_TEST((c[0] == A{5, "2"s, 3, 4.0}));
     BOOST_TEST((c[1] == A{1, "6"s, 3, 4.0}));
     BOOST_TEST((c[2] == A{1, "2"s, 7, 4.0}));
     BOOST_TEST((c[3] == A{1, "2"s, 3, 8.0}));
+}
+
+BOOST_AUTO_TEST_CASE(test_eq_op_with_mp11)
+{
+    {
+        auto a = fs::make_vector(1, "2"s, 3, 4.0);
+        auto b = fs::make_vector(5, "6"s, 7, 8.0);
+
+        BOOST_TEST(test_eq_op<A>(a, b));
+    }
+    // {
+    //     auto a = fs::make_vector(1, "2"s, 3, 4.0, boost::make_unique<int>(11));
+    //     auto b = fs::make_vector(5, "6"s, 7, 8.0, boost::make_unique<int>(12));
+
+    //     BOOST_TEST(test_eq_op<A>(a, b));
+    // }
 }
 } // namespace with_mp11
