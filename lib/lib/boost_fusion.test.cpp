@@ -51,7 +51,7 @@ struct emplace_back_t
     template <class... A>
     void operator()(A&&... a)
     {
-        container.emplace_back(std::forward<typename std::decay<A>::type>(a)...);
+        container.emplace_back(std::forward<A>(a)...);
     }
     Container& container{};
 };
@@ -89,286 +89,25 @@ void print_all(const A& a)
         printer(it);
 }
 
-struct S
-{
-    S(std::unique_ptr<int> cc)
-        : a{}
-        , b{}
-        , c{std::move(cc)}
-    {
-    }
-    S(int aa, std::string bb, std::unique_ptr<int> cc)
-        : a{aa}
-        , b{std::move(bb)}
-        , c{std::move(cc)}
-    {
-    }
-    S(int aa, std::string bb)
-        : a{aa}
-        , b{std::move(bb)}
-        , c{}
-    {
-    }
-    int a;
-    std::string b;
-    std::unique_ptr<int> c;
-};
-
-bool operator==(const S& a, const S& b)
-{
-    if (a.c && b.c)
-        return std::tie(a.a, a.b, *a.c) == std::tie(b.a, b.b, *b.c);
-    if (!a.c && !b.c)
-        return std::tie(a.a, a.b) == std::tie(b.a, b.b);
-    return false;
-}
-
-bool operator!=(const S& a, const S& b)
-{
-    return !(a == b);
-}
-
-std::ostream& operator<<(std::ostream& o, const S& a)
-{
-    o << "a=" << a.a << " b=" << a.b << " c=";
-    if (a.c)
-        o << *a.c;
-    else
-        o << "nullptr";
-
-    return o;
-}
-
-namespace boost_fusion
-{
-template <std::size_t N, class Tuple>
-constexpr auto drop_front(Tuple&& a) -> decltype(
-    fs::iterator_range<typename fs::result_of::
-                           advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type, N>::type,
-                       typename fs::result_of::end<typename std::decay<Tuple>::type>::type>{
-        typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                          N>::type{a},
-        typename fs::result_of::end<typename std::decay<Tuple>::type>::type{a}})
-{
-    return fs::iterator_range<
-        typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                          N>::type,
-        typename fs::result_of::end<typename std::decay<Tuple>::type>::type>{
-        typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                          N>::type{a},
-        typename fs::result_of::end<typename std::decay<Tuple>::type>::type{a}};
-}
-
-template <std::size_t N, class Tuple>
-constexpr auto take_front(Tuple&& a) -> decltype(
-    fs::iterator_range<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                       typename fs::result_of::
-                           advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type, N>::type
-
-                       >{
-        typename fs::result_of::begin<typename std::decay<Tuple>::type>::type{a},
-        typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                          N>::type{a}})
-{
-    return fs::iterator_range<
-        typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-        typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                          N>::type
-
-        >{typename fs::result_of::begin<typename std::decay<Tuple>::type>::type{a},
-          typename fs::result_of::advance_c<typename fs::result_of::begin<typename std::decay<Tuple>::type>::type,
-                                            N>::type{a}};
-}
-
-template <std::size_t N, class Tuple>
-auto slide(Tuple&& a, Tuple&& b) -> decltype(fs::join(
-    fs::join(take_front<N>(a),
-             fs::single_view<typename fs::result_of::at_c<typename std::decay<Tuple>::type, N>::type>(fs::at_c<N>(b))),
-    drop_front<N + 1>(a)))
-{
-    return fs::join(fs::join(take_front<N>(a),
-                             fs::single_view<typename fs::result_of::at_c<typename std::decay<Tuple>::type, N>::type>(
-                                 fs::at_c<N>(b))),
-                    drop_front<N + 1>(a));
-}
-
-template <std::size_t N>
-struct slide_all_t;
-
-template <>
-struct slide_all_t<0>
-{
-    template <class Tuple, class Container>
-    void operator()(Tuple&&, Tuple&&, Container&) const noexcept
-    {
-    }
-};
-
-template <std::size_t N>
-struct slide_all_t
-{
-    template <class Tuple, class Container>
-    void operator()(Tuple&& a, Tuple&& b, Container& container) const
-    {
-        using decayed = typename std::decay<Tuple>::type;
-        const auto& s = slide<N - 1>(std::forward<decayed>(a), std::forward<decayed>(b));
-        emplace_back_from_tuple(s, container);
-        slide_all_t<N - 1>{}(a, b, container);
-    }
-};
-
-template <class Tuple>
-decltype(auto) slide_all(Tuple&& a, Tuple&& b)
-{
-    using decayed = typename std::decay<Tuple>::type;
-    using size_t = typename fs::result_of::size<decayed>::type;
-    std::vector<decayed> slided{};
-    slided.reserve(size_t::value);
-    slide_all_t<size_t::value>{}(a, b, slided);
-    return slided;
-}
-
-template <class T, class Tuple>
-decltype(auto) slide_all(Tuple&& a, Tuple&& b)
-{
-    using decayed = typename std::decay<Tuple>::type;
-    using size_t = typename fs::result_of::size<decayed>::type;
-    std::vector<T> slided{};
-    slided.reserve(size_t::value);
-    slide_all_t<size_t::value>{}(a, b, slided);
-    return slided;
-}
-
-struct eq
-{
-    template <typename T>
-    bool operator()(const T& t) const
-    {
-        return fs::at_c<0>(t) == fs::at_c<1>(t);
-    }
-};
-
-template <class FwdSeq1, class FwdSeq2>
-bool eq_seq(FwdSeq1&& a, FwdSeq2&& b)
-{
-    using size_1 = typename fs::result_of::size<std::decay_t<FwdSeq1>>::type;
-    using size_2 = typename fs::result_of::size<std::decay_t<FwdSeq2>>::type;
-    static_assert(size_1::value == size_2::value, "");
-
-    using zip_seq = fs::vector<std::decay_t<FwdSeq1>&, std::decay_t<FwdSeq2>&>;
-    auto&& zipped = fs::zip_view<zip_seq>(zip_seq{a, b});
-
-    return fs::all(zipped, eq{});
-}
-
-BOOST_AUTO_TEST_CASE(S_is_move_only)
-{
-    S sa{boost::make_unique<int>(1)};
-    S sb{boost::make_unique<int>(2)};
-    // sa = sb;
-    // S sc{sa};
-    S sc{std::move(sa)};
-    sc = std::move(sb);
-}
-
-BOOST_AUTO_TEST_CASE(boost_fusion_idea)
-{
-    {
-        auto a = fs::make_vector(boost::make_unique<int>(1), "2", 3);
-
-        BOOST_TEST(eq_seq(drop_front<0>(a), fs::as_nview<0, 1, 2>(a)));
-        BOOST_TEST(eq_seq(drop_front<1>(a), fs::as_nview<1, 2>(a)));
-        BOOST_TEST(eq_seq(drop_front<2>(a), fs::as_nview<2>(a)));
-        BOOST_TEST(eq_seq(drop_front<3>(a), fs::make_vector()));
-    }
-    {
-        auto a = fs::make_vector(boost::make_unique<int>(1), "2", 3);
-
-        BOOST_TEST(eq_seq(take_front<0>(a), fs::make_vector()));
-        BOOST_TEST(eq_seq(take_front<1>(a), fs::as_nview<0>(a)));
-        BOOST_TEST(eq_seq(take_front<2>(a), fs::as_nview<0, 1>(a)));
-        BOOST_TEST(eq_seq(take_front<3>(a), fs::as_nview<0, 1, 2>(a)));
-    }
-    {
-        std::vector<S> vec{};
-        emplace_back_from_tuple(fs::make_vector(3, "2"), vec);
-        BOOST_TEST(vec[0] == (S{3, "2"}));
-
-        emplace_back_from_tuple(fs::make_vector(3, "2", boost::make_unique<int>(1)), vec);
-        BOOST_TEST(vec[0] == (S{3, "2"}));
-        BOOST_TEST(vec[1] == (S{3, "2", boost::make_unique<int>(1)}));
-    }
-    {
-        auto a = fs::make_vector(boost::make_unique<int>(1), "2", 3);
-        auto b = fs::make_vector(boost::make_unique<int>(4), "5", 6);
-
-        BOOST_TEST(eq_seq(slide<0>(a, b), fs::join(fs::as_nview<0>(b), fs::as_nview<1, 2>(a))));
-        BOOST_TEST(
-            eq_seq(slide<1>(a, b), fs::join(fs::join(fs::as_nview<0>(a), fs::as_nview<1>(b)), fs::as_nview<2>(a))));
-        BOOST_TEST(eq_seq(slide<2>(a, b), fs::join(fs::as_nview<0, 1>(a), fs::as_nview<2>(b))));
-    }
-    // {
-    const auto c = slide_all<S>(fs::make_vector(1, "2", boost::make_unique<int>(3)),
-                                fs::make_vector(4, "5", boost::make_unique<int>(6)));
-    std::cout << "\nslide_all<S>(a, b):\n";
-    for (const auto& a : c)
-    {
-        std::cout << a << '\n';
-    }
-    std::cout << std::endl;
-
-    //     // const auto d = slide_all(fs::make_vector(1, "2", boost::make_unique<int>(3)),
-    //     //                          fs::make_vector(4, "5", boost::make_unique<int>(6)));
-    //     // std::cout << "\nslide_all(a, b):\n";
-    //     // // for (const auto& a : d)
-    //     // //   {
-    //     // //     std::cout << a << '\n';
-    //     // //   }
-    //     // std::cout << std::endl;
-    // }
-    // BOOST_TEST(false);
-}
-} // namespace boost_fusion
-
 namespace with_mp11
 {
 } // namespace with_mp11
 
 namespace with_mp11
 {
-namespace impl
-{
-template <class Container>
-struct emplace_back_t
-{
-    template <class... A>
-    void operator()(A&&... a)
-    {
-        container.emplace_back(std::forward<A>(a)...);
-    }
-    Container& container{};
-};
-} // namespace impl
-
-template <class Tuple, class Container>
-void emplace_back_from_tuple(Tuple&& args, Container& out)
-{
-    impl::emplace_back_t<Container> emp{out};
-    fs::invoke(emp, args);
-}
 } // namespace with_mp11
 namespace with_mp11
 {
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
-constexpr auto drop_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
+constexpr auto drop_front(Tuple&& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
 {
     return fs::as_nview<Is...>(a);
 }
 
 template <std::size_t N, class Tuple, std::size_t... Is>
-constexpr auto take_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
+constexpr auto take_front(Tuple&& a, mp::index_sequence<Is...>) -> decltype(fs::as_nview<Is...>(a))
 {
     return fs::as_nview<Is...>(a);
 }
@@ -376,19 +115,19 @@ constexpr auto take_front(const Tuple& a, mp::index_sequence<Is...>) -> decltype
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
 constexpr auto drop_front(Tuple&& a)
-    -> decltype(impl::drop_front<N>(a, make_index_range<N, fs::result_of::size<TT>::value>()))
+    -> decltype(impl::drop_front<N>(a, make_index_range<N, fs::tuple_size<TT>::value>()))
 {
-    return impl::drop_front<N>(a, make_index_range<N, fs::result_of::size<TT>::value>());
+    return impl::drop_front<N>(a, make_index_range<N, fs::tuple_size<TT>::value>());
 }
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-constexpr auto take_front(const Tuple& a) -> decltype(impl::take_front<N>(a, mp::make_index_sequence<N>()))
+constexpr auto take_front(Tuple&& a) -> decltype(impl::take_front<N>(a, mp::make_index_sequence<N>()))
 {
     return impl::take_front<N>(a, mp::make_index_sequence<N>());
 }
 
 template <std::size_t N, class Tuple>
-constexpr auto slide(const Tuple& a, const Tuple& b)
+constexpr auto slide(Tuple&& a, Tuple&& b)
     -> decltype(fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a)))
 {
     return fs::join(fs::join(take_front<N>(a), fs::as_nview<N>(b)), drop_front<N + 1>(a));
@@ -397,7 +136,7 @@ constexpr auto slide(const Tuple& a, const Tuple& b)
 template <class Tuple, class TT = typename std::remove_reference<Tuple>::type, std::size_t... Is>
 auto slide_all_impl(Tuple&& a, Tuple&& b, std::vector<TT>& out, mp::index_sequence<Is...>) -> void
 {
-    int dummy[] = {0, ((void)out.push_back(slide<Is>(std::forward<TT>(a), std::forward<TT>(b))), 0)...};
+    int dummy[] = {0, ((void)out.push_back(slide<Is>(std::forward<Tuple>(a), std::forward<Tuple>(b))), 0)...};
     static_cast<void>(dummy);
 }
 
@@ -412,25 +151,25 @@ auto slide_all(Tuple&& a, Tuple&& b) -> std::vector<TT>
 }
 
 template <class A, class Tuple>
-constexpr auto make_from_tuple(const Tuple& tuple) -> A
+constexpr auto make_from_tuple(Tuple&& tuple) -> A
 {
     return fs::invoke(boost::value_factory<A>{}, tuple);
 }
 
 template <class A, class Tuples>
-auto make_from_tuples(const Tuples& tuples) -> std::vector<A>
+auto make_from_tuples(Tuples&& tuples) -> std::vector<A>
 {
     std::vector<A> as{};
     as.reserve(tuples.size());
     for (const auto& tuple : tuples)
-        as.push_back(make_from_tuple<A>(tuple));
+        emplace_back_from_tuple(tuple, as);
     return as;
 }
 
-template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
+template <class A, class Tuple>
 auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
 {
-    const auto& origin{with_mp11::make_from_tuple<A>(std::forward<TT>(a))};
+    const auto& origin{with_mp11::make_from_tuple<A>(std::forward<Tuple>(a))};
     const auto& c{make_from_tuples<A>(slide_all(a, b))};
     for (const auto& it : c)
         if (origin == it)
