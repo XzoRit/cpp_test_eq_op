@@ -6,7 +6,7 @@ constant src_dir
     : $(inc_dir)/lib
     ;
 
-project lib
+project tuple
     : usage-requirements <include>$(inc_dir)
     ;
 
@@ -24,9 +24,10 @@ constant sources
     : [ glob $(src_dir)/*.cpp : $(test_sources) ]
     ;
 
-lib lib
+lib tuple
     : $(sources)
     : <include>$(inc_dir)
+      <use>/boost//headers
     ;
 
 import boost
@@ -41,7 +42,8 @@ import testing
 run $(test_sources)
     : --color_output=false
     :
-    : <library>lib
+    : <library>tuple
       <library>/boost//unit_test_framework
+      <use>/boost//headers
     : test
     ;

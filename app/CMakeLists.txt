@@ -11,7 +11,7 @@ target_sources(
 target_link_libraries(
   app_exe
   PRIVATE
-    lib::lib
+    lib::tuple
     Boost::program_options
 )
 

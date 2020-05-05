@@ -1,5 +1,5 @@
 project app
-    : requirements <library>/lib//lib
+    : requirements <library>/lib//tuple
     ;
 
 constant sources

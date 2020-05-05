@@ -9,62 +9,70 @@ set(
 )
 
 add_library(
-  lib
+  tuple
 )
 
 target_compile_features(
-  lib
+  tuple
   PRIVATE
     cxx_std_11
 )
 
 target_sources(
-  lib
+  tuple
   PRIVATE
-  "${src_dir}/lib.cpp"
-  "${src_dir}/lib.hpp"
+    "${src_dir}/tuple.cpp"
+    "${src_dir}/tuple.hpp"
 )
 
 target_include_directories(
-  lib
+  tuple
   PUBLIC
     ${inc_dir}
 )
 
+target_link_libraries(
+  tuple
+  PUBLIC
+    Boost::boost
+)
+
 add_library(
-  lib::lib
+  lib::tuple
   ALIAS
-  lib
+    tuple
 )
 
 add_executable(
-  lib_test
+  tuple_test
 )
 
 target_sources(
-  lib_test
+  tuple_test
   PRIVATE
-  "${src_dir}/boost_fusion.test.cpp"
-  "${src_dir}/cpp_17.test.cpp"
-  "${src_dir}/main.test.cpp"
+    "${src_dir}/boost_fusion.test.cpp"
+    "${src_dir}/cpp_17.test.cpp"
+    "${src_dir}/main.test.cpp"
 )
 
 target_compile_features(
-  lib_test
+  tuple_test
   PRIVATE
     cxx_std_17
 )
 
 target_link_libraries(
-  lib_test
+  tuple_test
   PRIVATE
+    lib::tuple
+    Boost::boost
     Boost::unit_test_framework
 )
 
 add_test(
   NAME
-    lib::test
+    lib::tuple_test
   COMMAND
-    lib_test
+    tuple_test
     "--color_output=false"
 )
