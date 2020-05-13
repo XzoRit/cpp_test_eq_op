@@ -11,6 +11,9 @@
 #include <boost/functional/value_factory.hpp>
 
 #include <cstddef>
+#include <memory>
+#include <type_traits>
+#include <utility>
 
 namespace xzr
 {
@@ -46,6 +49,56 @@ using make_integer_range = typename impl::generate_range<T, N, (N <= M) ? (M - N
 template <std::size_t N, std::size_t M>
 using make_index_range = make_integer_range<std::size_t, N, M>;
 } // namespace utility
+} // namespace xzr
+
+namespace xzr
+{
+namespace iterator
+{
+template <typename Container>
+class back_emplace_iterator
+{
+  public:
+    explicit back_emplace_iterator(Container& container)
+        : container(std::addressof(container))
+    {
+    }
+
+    template <typename... Args>
+    back_emplace_iterator& operator=(Args&&... args)
+    {
+        static_assert(std::is_constructible<typename Container::value_type, Args...>::value,
+                      "value_type should be constructible from args");
+
+        container->emplace_back(std::forward<Args>(args)...);
+        return *this;
+    }
+
+    back_emplace_iterator& operator*()
+    {
+        return *this;
+    }
+
+    back_emplace_iterator& operator++()
+    {
+        return *this;
+    }
+
+    back_emplace_iterator operator++(int)
+    {
+        return *this;
+    }
+
+  private:
+    Container* container;
+};
+
+template <typename Container>
+back_emplace_iterator<Container> back_emplacer(Container& c)
+{
+    return back_emplace_iterator<Container>{c};
+}
+} // namespace iterator
 } // namespace xzr
 
 namespace xzr
