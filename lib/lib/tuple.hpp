@@ -67,7 +67,7 @@ struct emplace_back_t
 } // namespace impl
 
 template <class Tuple, class Container>
-void emplace_back_from_tuple(Tuple&& args, Container& out)
+inline void emplace_back_from_tuple(Tuple&& args, Container& out)
 {
     impl::emplace_back_t<Container> emp{out};
     boost::fusion::invoke(emp, args);
@@ -80,19 +80,22 @@ namespace xzr
 namespace tuple
 {
 template <class A, class Tuple>
-constexpr auto make_from_tuple(Tuple&& tuple) -> A
+inline auto make_from_tuple(Tuple&& tuple) -> A
 {
     return boost::fusion::invoke(boost::value_factory<A>{}, tuple);
 }
 
-template <class A, class Tuples>
-auto make_from_tuples(Tuples&& tuples) -> std::vector<A>
+template <class A, class InIter, class OutIter>
+inline auto make_from_tuples(InIter b, InIter e, OutIter out) -> void
 {
-    std::vector<A> as{};
-    as.reserve(tuples.size());
-    for (const auto& tuple : tuples)
-        xzr::tuple::emplace_back_from_tuple(tuple, as);
-    return as;
+    for (; b != e; ++b)
+        out++ = xzr::tuple::make_from_tuple<A>(*b);
+}
+
+template <class A, class Tuples, class OutIter>
+inline constexpr auto make_from_tuples(Tuples&& tuples, OutIter out) -> void
+{
+    xzr::tuple::make_from_tuples<A>(std::begin(tuples), std::end(tuples), out);
 }
 } // namespace tuple
 } // namespace xzr
@@ -106,14 +109,15 @@ namespace view
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
-constexpr auto drop_front(Tuple&& a, boost::mp11::index_sequence<Is...>) -> decltype(boost::fusion::as_nview<Is...>(a))
+inline constexpr auto drop_front(Tuple&& a, boost::mp11::index_sequence<Is...>)
+    -> decltype(boost::fusion::as_nview<Is...>(a))
 {
     return boost::fusion::as_nview<Is...>(a);
 }
 } // namespace impl
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-constexpr auto drop_front(Tuple&& a)
+inline constexpr auto drop_front(Tuple&& a)
     -> decltype(impl::drop_front<N>(a, xzr::utility::make_index_range<N, boost::fusion::tuple_size<TT>::value>()))
 {
     return impl::drop_front<N>(a, xzr::utility::make_index_range<N, boost::fusion::tuple_size<TT>::value>());
@@ -131,14 +135,15 @@ namespace view
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
-constexpr auto take_front(Tuple&& a, boost::mp11::index_sequence<Is...>) -> decltype(boost::fusion::as_nview<Is...>(a))
+inline constexpr auto take_front(Tuple&& a, boost::mp11::index_sequence<Is...>)
+    -> decltype(boost::fusion::as_nview<Is...>(a))
 {
     return boost::fusion::as_nview<Is...>(a);
 }
 } // namespace impl
 
 template <std::size_t N, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-constexpr auto take_front(Tuple&& a) -> decltype(impl::take_front<N>(a, boost::mp11::make_index_sequence<N>()))
+inline constexpr auto take_front(Tuple&& a) -> decltype(impl::take_front<N>(a, boost::mp11::make_index_sequence<N>()))
 {
     return impl::take_front<N>(a, boost::mp11::make_index_sequence<N>());
 }
@@ -152,13 +157,33 @@ namespace tuple
 {
 namespace view
 {
-template <std::size_t N, class Tuple>
-constexpr auto slide(Tuple&& a, Tuple&& b)
-    -> decltype(boost::fusion::join(boost::fusion::join(take_front<N>(a), boost::fusion::as_nview<N>(b)),
-                                    drop_front<N + 1>(a)))
+namespace impl
 {
-    return boost::fusion::join(boost::fusion::join(take_front<N>(a), boost::fusion::as_nview<N>(b)),
-                               drop_front<N + 1>(a));
+template <std::size_t N, class Tuple, std::size_t... Is>
+inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequence<Is...> idxs)
+{
+    return boost::fusion::join(
+        boost::fusion::join(xzr::tuple::view::take_front<N>(a), boost::fusion::as_nview<(N + Is)...>(b)),
+        xzr::tuple::view::drop_front<N + sizeof...(Is)>(a));
+}
+} // namespace impl
+
+template <std::size_t N, std::size_t Width, class Tuple>
+constexpr auto replace_with_at(Tuple&& a, Tuple&& b);
+
+template <std::size_t N, class Tuple>
+constexpr auto replace_with_at(Tuple&& a, Tuple&& b);
+
+template <std::size_t N, std::size_t Width, class Tuple>
+inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
+{
+    return impl::replace_with_at<N>(a, b, boost::mp11::make_index_sequence<Width>{});
+}
+
+template <std::size_t N, class Tuple>
+inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
+{
+    return replace_with_at<N, 1>(a, b);
 }
 } // namespace view
 } // namespace tuple

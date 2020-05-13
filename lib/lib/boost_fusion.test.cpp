@@ -17,31 +17,47 @@ namespace utility
 {
 namespace impl
 {
-template <class Tuple, class TT = typename std::remove_reference<Tuple>::type, std::size_t... Is>
-auto slide_all(Tuple&& a, Tuple&& b, std::vector<TT>& out, mp::index_sequence<Is...>) -> void
+template <std::size_t Width, class Tuple, class OutIter, std::size_t... Is>
+auto slide_window_with(Tuple&& a, Tuple&& b, OutIter out, mp::index_sequence<Is...>) -> void
 {
     int dummy[] = {
         0,
-        ((void)out.push_back(xzr::tuple::view::slide<Is>(std::forward<Tuple>(a), std::forward<Tuple>(b))), 0)...};
+        (out++ = xzr::tuple::view::replace_with_at<Is, Width>(std::forward<Tuple>(a), std::forward<Tuple>(b)), 0)...};
     static_cast<void>(dummy);
 }
 } // namespace impl
 
-template <class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-auto slide_all(Tuple&& a, Tuple&& b) -> std::vector<TT>
+template <std::size_t Width, class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
+auto slide_window_with(Tuple&& a, Tuple&& b, OutIter out) -> void
 {
     constexpr auto tuple_size{fs::tuple_size<TT>::value};
-    std::vector<TT> slided{};
-    slided.reserve(tuple_size);
-    impl::slide_all(a, b, slided, mp::make_index_sequence<tuple_size>{});
-    return slided;
+    impl::slide_window_with<Width>(a, b, out, mp::make_index_sequence<tuple_size>{});
+}
+
+template <class Tuple, class TT = typename std::remove_reference<Tuple>::type>
+auto create_ctor_params(Tuple&& a, Tuple&& b) -> std::vector<TT>
+{
+    constexpr auto tuple_size{fs::tuple_size<TT>::value};
+    std::vector<TT> replaced{};
+    replaced.reserve(tuple_size);
+    slide_window_with<1>(a, b, std::back_inserter(replaced));
+    return replaced;
+}
+
+template <class A, class Tuples>
+auto create_with(Tuples&& tuples) -> std::vector<A>
+{
+    std::vector<A> as{};
+    as.reserve(tuples.size());
+    xzr::tuple::make_from_tuples<A>(tuples, std::back_inserter(as));
+    return as;
 }
 
 template <class A, class Tuple>
 auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
 {
     const auto& origin{xzr::tuple::make_from_tuple<A>(std::forward<Tuple>(a))};
-    const auto& c{xzr::tuple::make_from_tuples<A>(slide_all(a, b))};
+    const auto& c{create_with<A>(create_ctor_params(a, b))};
     for (const auto& it : c)
         if (origin == it && !(origin != it))
             return false;
@@ -118,23 +134,20 @@ std::ostream& operator<<(std::ostream& out, const A& a)
 }
 
 using xzr::tuple::view::drop_front;
-using xzr::tuple::view::slide;
+using xzr::tuple::view::replace_with_at;
 using xzr::tuple::view::take_front;
 
-using xzr::test::utility::slide_all;
+using xzr::test::utility::create_ctor_params;
+using xzr::test::utility::create_with;
 using xzr::test::utility::test_eq_op;
 
 BOOST_AUTO_TEST_CASE(take_with_mp11)
 {
     auto a = fs::make_vector(boost::make_unique<int>(0), "1"s, 2);
 
-    fs::for_each(take_front<0>(a), print{});
     BOOST_TEST((take_front<0>(a) == (fs::make_vector())));
-    fs::for_each(take_front<1>(a), print{});
     BOOST_TEST((take_front<1>(a) == (fs::as_nview<0>(a))));
-    fs::for_each(take_front<2>(a), print{});
     BOOST_TEST((take_front<2>(a) == (fs::as_nview<0, 1>(a))));
-    fs::for_each(take_front<3>(a), print{});
     BOOST_TEST((take_front<3>(a) == (fs::as_nview<0, 1, 2>(a))));
 }
 
@@ -142,38 +155,44 @@ BOOST_AUTO_TEST_CASE(drop_with_mp11)
 {
     auto a = fs::make_vector(boost::make_unique<int>(0), "1"s, 2);
 
-    fs::for_each(drop_front<0>(a), print{});
     BOOST_TEST((drop_front<0>(a) == (fs::as_nview<0, 1, 2>(a))));
-    fs::for_each(drop_front<1>(a), print{});
     BOOST_TEST((drop_front<1>(a) == (fs::as_nview<1, 2>(a))));
-    fs::for_each(drop_front<2>(a), print{});
     BOOST_TEST((drop_front<2>(a) == (fs::as_nview<2>(a))));
-    fs::for_each(drop_front<3>(a), print{});
     BOOST_TEST((drop_front<3>(a) == (fs::make_vector())));
 }
 
-BOOST_AUTO_TEST_CASE(slide_n_with_mp11)
+BOOST_AUTO_TEST_CASE(replace_with_at_n_with_mp11)
 {
     auto a = fs::make_vector(boost::make_unique<int>(1), "2", 3, 4.0);
     auto b = fs::make_vector(boost::make_unique<int>(5), "6", 7, 8.0);
 
-    fs::for_each(slide<0>(a, b), print{});
-    BOOST_TEST((slide<0>(a, b) == fs::join(fs::as_nview<0>(b), fs::as_nview<1, 2, 3>(a))));
-    fs::for_each(slide<1>(a, b), print{});
-    BOOST_TEST((slide<1>(a, b) == fs::join(fs::join(fs::as_nview<0>(a), fs::as_nview<1>(b)), fs::as_nview<2, 3>(a))));
-    fs::for_each(slide<2>(a, b), print{});
-    BOOST_TEST((slide<2>(a, b) == fs::join(fs::join(fs::as_nview<0, 1>(a), fs::as_nview<2>(b)), fs::as_nview<3>(a))));
-    fs::for_each(slide<3>(a, b), print{});
-    BOOST_TEST((slide<3>(a, b) == fs::join(fs::as_nview<0, 1, 2>(a), fs::as_nview<3>(b))));
+    // implicit width = 1
+    BOOST_TEST((replace_with_at<0>(a, b) == fs::join(fs::as_nview<0>(b), fs::as_nview<1, 2, 3>(a))));
+    BOOST_TEST((replace_with_at<1>(a, b) ==
+                fs::join(fs::join(fs::as_nview<0>(a), fs::as_nview<1>(b)), fs::as_nview<2, 3>(a))));
+    BOOST_TEST((replace_with_at<2>(a, b) ==
+                fs::join(fs::join(fs::as_nview<0, 1>(a), fs::as_nview<2>(b)), fs::as_nview<3>(a))));
+    BOOST_TEST((replace_with_at<3>(a, b) == fs::join(fs::as_nview<0, 1, 2>(a), fs::as_nview<3>(b))));
+
+    // explicit width = 1
+    BOOST_TEST((replace_with_at<0, 1>(a, b) == replace_with_at<0>(a, b)));
+    BOOST_TEST((replace_with_at<1, 1>(a, b) == replace_with_at<1>(a, b)));
+    BOOST_TEST((replace_with_at<2, 1>(a, b) == replace_with_at<2>(a, b)));
+    BOOST_TEST((replace_with_at<3, 1>(a, b) == replace_with_at<3>(a, b)));
+
+    // explicit width = 2
+    BOOST_TEST((replace_with_at<0, 2>(a, b) == fs::join(fs::as_nview<0, 1>(b), fs::as_nview<2, 3>(a))));
+    BOOST_TEST((replace_with_at<1, 2>(a, b) ==
+                fs::join(fs::as_nview<0>(a), fs::join(fs::as_nview<1, 2>(b), fs::as_nview<3>(a)))));
+    BOOST_TEST((replace_with_at<2, 2>(a, b) == fs::join(fs::as_nview<0, 1>(a), fs::as_nview<2, 3>(b))));
 }
 
-BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
+BOOST_AUTO_TEST_CASE(create_ctor_params_tuple_with_mp11)
 {
     auto a = fs::make_vector(1, "2"s, 3, 4.0);
     auto b = fs::make_vector(5, "6"s, 7, 8.0);
 
-    const auto& c{slide_all(a, b)};
-    print_all(c);
+    const auto& c{create_ctor_params(a, b)};
 
     BOOST_TEST(c.size() == 4);
     BOOST_TEST(c[0] == fs::make_vector(5, "2"s, 3, 4.0));
@@ -182,13 +201,12 @@ BOOST_AUTO_TEST_CASE(slide_all_tuple_with_mp11)
     BOOST_TEST(c[3] == fs::make_vector(1, "2"s, 3, 8.0));
 }
 
-BOOST_AUTO_TEST_CASE(make_from_tuples_with_mp11)
+BOOST_AUTO_TEST_CASE(create_with_with_mp11)
 {
     auto a = fs::make_vector(1, "2"s, 3, 4.0);
     auto b = fs::make_vector(5, "6"s, 7, 8.0);
 
-    const auto& c = xzr::tuple::make_from_tuples<A>(slide_all(a, b));
-    print_all(c);
+    const auto& c = create_with<A>(create_ctor_params(a, b));
 
     BOOST_TEST(c.size() == 4);
     BOOST_TEST((c[0] == A{5, "2"s, 3, 4.0}));

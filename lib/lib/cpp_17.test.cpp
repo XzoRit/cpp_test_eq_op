@@ -211,13 +211,6 @@ BOOST_AUTO_TEST_CASE(make_test_vector_from_tuples)
         expected.emplace_back(1, "5", std::make_unique<int>(3));
         expected.emplace_back(1, "2", std::make_unique<int>(6));
 
-        for (const auto& b : a)
-            std::cout << b << ' ';
-        std::cout << std::endl;
-        for (const auto& b : expected)
-            std::cout << b << ' ';
-        std::cout << std::endl;
-
         BOOST_TEST(a.size() == 3);
         // BOOST_TEST(a == expected);
     }
