@@ -137,19 +137,6 @@ inline auto make_from_tuple(Tuple&& tuple) -> A
 {
     return boost::fusion::invoke(boost::value_factory<A>{}, tuple);
 }
-
-template <class A, class InIter, class OutIter>
-inline auto make_from_tuples(InIter b, InIter e, OutIter out) -> void
-{
-    for (; b != e; ++b)
-        out++ = xzr::tuple::make_from_tuple<A>(*b);
-}
-
-template <class A, class Tuples, class OutIter>
-inline constexpr auto make_from_tuples(Tuples&& tuples, OutIter out) -> void
-{
-    xzr::tuple::make_from_tuples<A>(std::begin(tuples), std::end(tuples), out);
-}
 } // namespace tuple
 } // namespace xzr
 
@@ -239,5 +226,28 @@ inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
     return replace_with_at<N, 1>(a, b);
 }
 } // namespace view
+} // namespace tuple
+} // namespace xzr
+
+namespace xzr
+{
+namespace tuple
+{
+namespace impl
+{
+template <std::size_t Width, class Tuple, class UnFunc, std::size_t... Is>
+auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_sequence<Is...>) -> void
+{
+    int dummy[] = {0, (unFunc(xzr::tuple::view::replace_with_at<Is, Width>(a, b)), 0)...};
+    static_cast<void>(dummy);
+}
+} // namespace impl
+
+template <std::size_t Width, class Tuple, class UnFunc, class TT = typename std::remove_reference<Tuple>::type>
+auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc) -> void
+{
+    constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
+    impl::slide_window_with<Width>(a, b, unFunc, boost::mp11::make_index_sequence<tuple_size>{});
+}
 } // namespace tuple
 } // namespace xzr

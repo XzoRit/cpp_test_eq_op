@@ -17,21 +17,6 @@ namespace utility
 {
 namespace impl
 {
-template <std::size_t Width, class Tuple, class UnFunc, std::size_t... Is>
-auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, mp::index_sequence<Is...>) -> void
-{
-    int dummy[] = {0, (unFunc(xzr::tuple::view::replace_with_at<Is, Width>(a, b)), 0)...};
-    static_cast<void>(dummy);
-}
-} // namespace impl
-
-template <std::size_t Width, class Tuple, class UnFunc, class TT = typename std::remove_reference<Tuple>::type>
-auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc) -> void
-{
-    constexpr auto tuple_size{fs::tuple_size<TT>::value};
-    impl::slide_window_with<Width>(a, b, unFunc, mp::make_index_sequence<tuple_size>{});
-}
-
 template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
 auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
 {
@@ -39,16 +24,17 @@ auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
     std::vector<A> as{};
     as.reserve(tuple_size);
 
-    slide_window_with<1>(a, b, [&](const auto& a) { xzr::tuple::emplace_back_from_tuple(a, as); });
+    xzr::tuple::slide_window_with<1>(a, b, [&](const auto& a) { xzr::tuple::emplace_back_from_tuple(a, as); });
 
     return as;
 }
+} // namespace impl
 
 template <class A, class Tuple>
 auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
 {
     const auto& origin{xzr::tuple::make_from_tuple<A>(a)};
-    const auto& c{create_test_objects<A>(a, b)};
+    const auto& c{impl::create_test_objects<A>(a, b)};
     for (const auto& it : c)
         if (origin == it && !(origin != it))
             return false;
@@ -128,8 +114,8 @@ using xzr::tuple::view::drop_front;
 using xzr::tuple::view::replace_with_at;
 using xzr::tuple::view::take_front;
 
-using xzr::test::utility::create_test_objects;
 using xzr::test::utility::test_eq_op;
+using xzr::test::utility::impl::create_test_objects;
 
 BOOST_AUTO_TEST_CASE(take_with_mp11)
 {
@@ -183,12 +169,9 @@ BOOST_AUTO_TEST_CASE(create_test_objects_with_mp11)
     auto b = fs::make_vector(5, "6"s, 7, 8.0);
 
     const auto& objs{create_test_objects<A>(a, b)};
-    std::vector<A> expected{};
-    expected.reserve(4);
-    expected.emplace_back(5, "2"s, 3, 4.0);
-    expected.emplace_back(1, "6"s, 3, 4.0);
-    expected.emplace_back(1, "2"s, 7, 4.0);
-    expected.emplace_back(1, "2"s, 3, 8.0);
+    A as[] = {{5, "2"s, 3, 4.0}, {1, "6"s, 3, 4.0}, {1, "2"s, 7, 4.0}, {1, "2"s, 3, 8.0}};
+    const std::vector<A> expected{std::make_move_iterator(std::begin(as)), std::make_move_iterator(std::end(as))};
+
     BOOST_TEST((objs == expected));
 }
 
