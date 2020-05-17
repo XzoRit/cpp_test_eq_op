@@ -59,8 +59,8 @@ template <typename Container>
 class back_emplace_iterator
 {
   public:
-    explicit back_emplace_iterator(Container& container)
-        : container(std::addressof(container))
+    explicit back_emplace_iterator(Container& c)
+        : container{std::addressof(c)}
     {
     }
 
@@ -90,11 +90,11 @@ class back_emplace_iterator
     }
 
   private:
-    Container* container;
+    Container* container{nullptr};
 };
 
 template <typename Container>
-back_emplace_iterator<Container> back_emplacer(Container& c)
+inline back_emplace_iterator<Container> back_emplacer(Container& c)
 {
     return back_emplace_iterator<Container>{c};
 }
@@ -201,6 +201,9 @@ namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
 inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequence<Is...> idxs)
+    -> decltype(boost::fusion::join(boost::fusion::join(xzr::tuple::view::take_front<N>(a),
+                                                        boost::fusion::as_nview<(N + Is)...>(b)),
+                                    xzr::tuple::view::drop_front<N + sizeof...(Is)>(a)))
 {
     return boost::fusion::join(
         boost::fusion::join(xzr::tuple::view::take_front<N>(a), boost::fusion::as_nview<(N + Is)...>(b)),
@@ -209,19 +212,14 @@ inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b, boost::mp11::index_s
 } // namespace impl
 
 template <std::size_t N, std::size_t Width, class Tuple>
-constexpr auto replace_with_at(Tuple&& a, Tuple&& b);
-
-template <std::size_t N, class Tuple>
-constexpr auto replace_with_at(Tuple&& a, Tuple&& b);
-
-template <std::size_t N, std::size_t Width, class Tuple>
 inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
+    -> decltype(impl::replace_with_at<N>(a, b, boost::mp11::make_index_sequence<Width>{}))
 {
     return impl::replace_with_at<N>(a, b, boost::mp11::make_index_sequence<Width>{});
 }
 
 template <std::size_t N, class Tuple>
-inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
+inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b) -> decltype(replace_with_at<N, 1>(a, b))
 {
     return replace_with_at<N, 1>(a, b);
 }
