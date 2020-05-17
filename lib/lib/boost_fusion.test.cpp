@@ -18,7 +18,7 @@ namespace utility
 namespace impl
 {
 template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
-auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
+inline auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
 {
     constexpr auto tuple_size{fs::tuple_size<TT>::value};
     std::vector<A> as{};
@@ -30,8 +30,14 @@ auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
 }
 } // namespace impl
 
+template <class... Args>
+inline constexpr auto ctor_params(Args... args) -> decltype(boost::fusion::make_vector(args...))
+{
+    return boost::fusion::make_vector(args...);
+}
+
 template <class A, class Tuple>
-auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
+inline auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
 {
     const auto& origin{xzr::tuple::make_from_tuple<A>(a)};
     const auto& c{impl::create_test_objects<A>(a, b)};
@@ -114,6 +120,7 @@ using xzr::tuple::view::drop_front;
 using xzr::tuple::view::replace_with_at;
 using xzr::tuple::view::take_front;
 
+using xzr::test::utility::ctor_params;
 using xzr::test::utility::test_eq_op;
 using xzr::test::utility::impl::create_test_objects;
 
@@ -178,10 +185,7 @@ BOOST_AUTO_TEST_CASE(create_test_objects_with_mp11)
 BOOST_AUTO_TEST_CASE(test_eq_op_with_mp11)
 {
     {
-        auto a = fs::make_vector(1, "2"s, 3, 4.0);
-        auto b = fs::make_vector(5, "6"s, 7, 8.0);
-
-        BOOST_TEST(test_eq_op<A>(a, b));
+        BOOST_TEST(test_eq_op<A>(ctor_params(1, "2"s, 3, 4.0), ctor_params(5, "6"s, 7, 8.0)));
     }
     // {
     //     auto a = fs::make_vector(1, "2"s, 3, 4.0, boost::make_unique<int>(11));
