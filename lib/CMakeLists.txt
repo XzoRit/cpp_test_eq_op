@@ -23,6 +23,12 @@ target_sources(
   PRIVATE
     "${src_dir}/tuple.cpp"
     "${src_dir}/tuple.hpp"
+    "${src_dir}/utility.cpp"
+    "${src_dir}/utility.hpp"
+    "${src_dir}/iterator.cpp"
+    "${src_dir}/iterator.hpp"
+    "${src_dir}/test_eq_op.cpp"
+    "${src_dir}/test_eq_op.hpp"
 )
 
 target_include_directories(
@@ -50,15 +56,17 @@ add_executable(
 target_sources(
   tuple_test
   PRIVATE
-    "${src_dir}/boost_fusion.test.cpp"
-    "${src_dir}/cpp_17.test.cpp"
+    "${src_dir}/tuple.test.cpp"
+    "${src_dir}/utility.test.cpp"
+    "${src_dir}/iterator.test.cpp"
+    "${src_dir}/test_eq_op.test.cpp"
     "${src_dir}/main.test.cpp"
 )
 
 target_compile_features(
   tuple_test
   PRIVATE
-    cxx_std_17
+    cxx_std_11
 )
 
 target_link_libraries(

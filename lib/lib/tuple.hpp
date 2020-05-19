@@ -1,5 +1,7 @@
 #pragma once
 
+#include <lib/utility.hpp>
+
 #include <boost/mp11.hpp>
 
 #include <boost/fusion/algorithm.hpp>
@@ -14,92 +16,6 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
-
-namespace xzr
-{
-namespace utility
-{
-namespace impl
-{
-template <typename T,
-          T Begin,
-          T Steps,
-          bool Increase,
-          T Delta = T(1),
-          typename = boost::mp11::make_integer_sequence<T, Steps>>
-struct generate_range;
-
-template <typename T, T B, T S, T D, T... Ns>
-struct generate_range<T, B, S, true, D, boost::mp11::integer_sequence<T, Ns...>>
-{
-    using type = boost::mp11::integer_sequence<T, B + D * Ns...>;
-};
-
-template <typename T, T B, T S, T D, T... Ns>
-struct generate_range<T, B, S, false, D, boost::mp11::integer_sequence<T, Ns...>>
-{
-    using type = boost::mp11::integer_sequence<T, B - D * Ns...>;
-};
-} // namespace impl
-
-template <typename T, T N, T M>
-using make_integer_range = typename impl::generate_range<T, N, (N <= M) ? (M - N) : (N - M), (N <= M)>::type;
-
-// see https://github.com/taocpp/sequences
-template <std::size_t N, std::size_t M>
-using make_index_range = make_integer_range<std::size_t, N, M>;
-} // namespace utility
-} // namespace xzr
-
-namespace xzr
-{
-namespace iterator
-{
-template <typename Container>
-class back_emplace_iterator
-{
-  public:
-    explicit back_emplace_iterator(Container& c)
-        : container{std::addressof(c)}
-    {
-    }
-
-    template <typename... Args>
-    back_emplace_iterator& operator=(Args&&... args)
-    {
-        static_assert(std::is_constructible<typename Container::value_type, Args...>::value,
-                      "value_type should be constructible from args");
-
-        container->emplace_back(std::forward<Args>(args)...);
-        return *this;
-    }
-
-    back_emplace_iterator& operator*()
-    {
-        return *this;
-    }
-
-    back_emplace_iterator& operator++()
-    {
-        return *this;
-    }
-
-    back_emplace_iterator operator++(int)
-    {
-        return *this;
-    }
-
-  private:
-    Container* container{nullptr};
-};
-
-template <typename Container>
-inline back_emplace_iterator<Container> back_emplacer(Container& c)
-{
-    return back_emplace_iterator<Container>{c};
-}
-} // namespace iterator
-} // namespace xzr
 
 namespace xzr
 {
