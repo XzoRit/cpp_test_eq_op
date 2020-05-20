@@ -116,7 +116,7 @@ namespace view
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
-inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequence<Is...> idxs)
+inline constexpr auto replace_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequence<Is...> idxs)
     -> decltype(boost::fusion::join(boost::fusion::join(xzr::tuple::view::take_front<N>(a),
                                                         boost::fusion::as_nview<(N + Is)...>(b)),
                                     xzr::tuple::view::drop_front<N + sizeof...(Is)>(a)))
@@ -128,16 +128,16 @@ inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b, boost::mp11::index_s
 } // namespace impl
 
 template <std::size_t N, std::size_t Width, class Tuple>
-inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b)
-    -> decltype(impl::replace_with_at<N>(a, b, boost::mp11::make_index_sequence<Width>{}))
+inline constexpr auto replace_at(Tuple&& a, Tuple&& b)
+    -> decltype(impl::replace_at<N>(a, b, boost::mp11::make_index_sequence<Width>{}))
 {
-    return impl::replace_with_at<N>(a, b, boost::mp11::make_index_sequence<Width>{});
+    return impl::replace_at<N>(a, b, boost::mp11::make_index_sequence<Width>{});
 }
 
 template <std::size_t N, class Tuple>
-inline constexpr auto replace_with_at(Tuple&& a, Tuple&& b) -> decltype(replace_with_at<N, 1>(a, b))
+inline constexpr auto replace_at(Tuple&& a, Tuple&& b) -> decltype(replace_at<N, 1>(a, b))
 {
-    return replace_with_at<N, 1>(a, b);
+    return replace_at<N, 1>(a, b);
 }
 } // namespace view
 } // namespace tuple
@@ -152,7 +152,7 @@ namespace impl
 template <std::size_t Width, class Tuple, class UnFunc, std::size_t... Is>
 auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_sequence<Is...>) -> void
 {
-    int dummy[] = {0, (unFunc(xzr::tuple::view::replace_with_at<Is, Width>(a, b)), 0)...};
+    int dummy[] = {0, (unFunc(xzr::tuple::view::replace_at<Is, Width>(a, b)), 0)...};
     static_cast<void>(dummy);
 }
 } // namespace impl
