@@ -51,8 +51,9 @@ BOOST_AUTO_TEST_CASE(test_back_emplacer)
     const std::vector<int> is{1, 2, 3};
     const auto expected{[&]() {
         std::vector<A> as{};
-        for (int i : is)
-            as.push_back(A{make_unique<int>(i)});
+        std::transform(std::begin(is), std::end(is), std::back_inserter(as), [](int i) {
+            return A{make_unique<int>(i)};
+        });
         return as;
     }()};
 

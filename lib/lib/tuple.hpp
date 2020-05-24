@@ -39,7 +39,7 @@ template <class Tuple, class Container>
 inline void emplace_back_from_tuple(Tuple&& args, Container& out)
 {
     impl::emplace_back_t<Container> emp{out};
-    boost::fusion::invoke(emp, args);
+    boost::fusion::invoke_function_object(emp, std::forward<Tuple>(args));
 }
 } // namespace tuple
 } // namespace xzr
@@ -49,9 +49,11 @@ namespace xzr
 namespace tuple
 {
 template <class A, class Tuple>
-inline auto make_from_tuple(Tuple&& tuple) -> A
+inline auto make_from_tuple(Tuple&& tuple)
+    -> decltype(boost::fusion::invoke_function_object(boost::value_factory<A>{}, std::forward<Tuple>(tuple)))
 {
-    return boost::fusion::invoke(boost::value_factory<A>{}, tuple);
+    boost::value_factory<A> factory{};
+    return boost::fusion::invoke_function_object(factory, std::forward<Tuple>(tuple));
 }
 } // namespace tuple
 } // namespace xzr
@@ -127,10 +129,11 @@ inline constexpr auto replace_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequen
 }
 } // namespace impl
 
-template <std::size_t N, std::size_t Width, class Tuple>
+template <std::size_t N, std::size_t Width, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
 inline constexpr auto replace_at(Tuple&& a, Tuple&& b)
     -> decltype(impl::replace_at<N>(a, b, boost::mp11::make_index_sequence<Width>{}))
 {
+    static_assert((N + Width) <= boost::fusion::tuple_size<TT>::value, "index + width is bigger than size of tuple");
     return impl::replace_at<N>(a, b, boost::mp11::make_index_sequence<Width>{});
 }
 
@@ -150,7 +153,7 @@ namespace tuple
 namespace impl
 {
 template <std::size_t Width, class Tuple, class UnFunc, std::size_t... Is>
-auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_sequence<Is...>) -> void
+inline constexpr auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_sequence<Is...>) -> void
 {
     int dummy[] = {0, (unFunc(xzr::tuple::view::replace_at<Is, Width>(a, b)), 0)...};
     static_cast<void>(dummy);
@@ -158,9 +161,10 @@ auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_s
 } // namespace impl
 
 template <std::size_t Width, class Tuple, class UnFunc, class TT = typename std::remove_reference<Tuple>::type>
-auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc) -> void
+inline constexpr auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc) -> void
 {
     constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
+    static_assert(Width <= tuple_size, "width is greater than tuple size");
     impl::slide_window_with<Width>(a, b, unFunc, boost::mp11::make_index_sequence<tuple_size>{});
 }
 } // namespace tuple

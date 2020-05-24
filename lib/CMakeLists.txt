@@ -56,6 +56,8 @@ add_executable(
 target_sources(
   tuple_test
   PRIVATE
+    "${src_dir}/a.test.hpp"
+    "${src_dir}/a.test.cpp"
     "${src_dir}/tuple.test.cpp"
     "${src_dir}/utility.test.cpp"
     "${src_dir}/iterator.test.cpp"

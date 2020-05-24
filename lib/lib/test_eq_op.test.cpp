@@ -1,3 +1,5 @@
+#include <lib/a.test.hpp>
+
 #include <lib/test_eq_op.hpp>
 
 #include <boost/smart_ptr/make_unique.hpp>
@@ -20,39 +22,7 @@ using xzr::test::ctor_params;
 using xzr::test::test_eq_op;
 using xzr::test::impl::create_test_objects;
 
-namespace
-{
-struct A
-{
-    A(int aa, std::string bb, int cc, double dd, std::unique_ptr<int> ee = nullptr)
-        : a{aa}
-        , b{bb}
-        , c{cc}
-        , d{dd}
-        , e{std::move(ee)}
-    {
-    }
-    int a{};
-    std::string b{};
-    int c{};
-    double d{};
-    std::unique_ptr<int> e{};
-};
-
-bool operator==(const A& a, const A& b)
-{
-    if (a.e && b.e)
-        return std::tie(a.a, a.b, a.c, a.d, *a.e) == std::tie(b.a, b.b, b.c, b.d, *b.e);
-    if (!a.e && !b.e)
-        return std::tie(a.a, a.b, a.c, a.d) == std::tie(b.a, b.b, b.c, b.d);
-    return false;
-}
-
-bool operator!=(const A& a, const A& b)
-{
-    return !(a == b);
-}
-} // namespace
+using xzr_test::A;
 
 namespace
 {
