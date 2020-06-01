@@ -15,6 +15,8 @@
 
 #include <boost/mp11/tuple.hpp>
 
+#include <boost/mpl/bool.hpp>
+
 #include <cstddef>
 #include <memory>
 #include <tuple>
@@ -66,12 +68,28 @@ namespace xzr
 {
 namespace tuple
 {
+namespace impl
+{
 template <class A, class Tuple>
-inline auto make_from_tuple(Tuple&& tuple)
-    -> decltype(boost::fusion::invoke_function_object(boost::value_factory<A>{}, std::forward<Tuple>(tuple)))
+inline auto make_from_tuple(Tuple&& tuple, boost::mpl::false_)
+{
+    return boost::mp11::construct_from_tuple<A>(std::forward<Tuple>(tuple));
+}
+
+template <class A, class Tuple>
+inline auto make_from_tuple(Tuple&& tuple, boost::mpl::true_)
 {
     boost::value_factory<A> factory{};
     return boost::fusion::invoke_function_object(factory, std::forward<Tuple>(tuple));
+}
+} // namespace impl
+template <class A,
+          class Tuple,
+          class TT = typename std::remove_reference<Tuple>::type,
+          class IsFusionSeq = typename boost::fusion::traits::is_sequence<TT>::type>
+inline auto make_from_tuple(Tuple&& tuple)
+{
+    return impl::make_from_tuple<A>(std::forward<Tuple>(tuple), IsFusionSeq{});
 }
 } // namespace tuple
 } // namespace xzr
@@ -79,8 +97,6 @@ inline auto make_from_tuple(Tuple&& tuple)
 namespace xzr
 {
 namespace tuple
-{
-namespace view
 {
 namespace impl
 {
@@ -98,15 +114,12 @@ inline constexpr auto drop_front(Tuple&& a)
 {
     return impl::drop_front<N>(a, xzr::utility::make_index_range<N, boost::fusion::tuple_size<TT>::value>());
 }
-} // namespace view
 } // namespace tuple
 } // namespace xzr
 
 namespace xzr
 {
 namespace tuple
-{
-namespace view
 {
 namespace impl
 {
@@ -123,7 +136,6 @@ inline constexpr auto take_front(Tuple&& a) -> decltype(impl::take_front<N>(a, b
 {
     return impl::take_front<N>(a, boost::mp11::make_index_sequence<N>());
 }
-} // namespace view
 } // namespace tuple
 } // namespace xzr
 
@@ -131,19 +143,17 @@ namespace xzr
 {
 namespace tuple
 {
-namespace view
-{
 namespace impl
 {
 template <std::size_t N, class Tuple, std::size_t... Is>
 inline constexpr auto replace_at(Tuple&& a, Tuple&& b, boost::mp11::index_sequence<Is...> idxs)
-    -> decltype(boost::fusion::join(boost::fusion::join(xzr::tuple::view::take_front<N>(a),
+    -> decltype(boost::fusion::join(boost::fusion::join(xzr::tuple::take_front<N>(a),
                                                         boost::fusion::as_nview<(N + Is)...>(b)),
-                                    xzr::tuple::view::drop_front<N + sizeof...(Is)>(a)))
+                                    xzr::tuple::drop_front<N + sizeof...(Is)>(a)))
 {
     return boost::fusion::join(
-        boost::fusion::join(xzr::tuple::view::take_front<N>(a), boost::fusion::as_nview<(N + Is)...>(b)),
-        xzr::tuple::view::drop_front<N + sizeof...(Is)>(a));
+        boost::fusion::join(xzr::tuple::take_front<N>(a), boost::fusion::as_nview<(N + Is)...>(b)),
+        xzr::tuple::drop_front<N + sizeof...(Is)>(a));
 }
 } // namespace impl
 
@@ -160,7 +170,6 @@ inline constexpr auto replace_at(Tuple&& a, Tuple&& b) -> decltype(replace_at<N,
 {
     return replace_at<N, 1>(a, b);
 }
-} // namespace view
 } // namespace tuple
 } // namespace xzr
 
@@ -173,7 +182,7 @@ namespace impl
 template <std::size_t Width, class Tuple, class OutIter, std::size_t... Is>
 inline constexpr auto slide_window_c(Tuple&& a, Tuple&& b, OutIter out, boost::mp11::index_sequence<Is...>) -> void
 {
-    int dummy[] = {0, ((*out++ = xzr::tuple::view::replace_at<Is, Width>(a, b)), 0)...};
+    int dummy[] = {0, ((*out++ = xzr::tuple::replace_at<Is, Width>(a, b)), 0)...};
     static_cast<void>(dummy);
 }
 } // namespace impl

@@ -20,12 +20,12 @@ using boost::fusion::make_vector;
 
 using boost::make_unique;
 
+using xzr::tuple::drop_front;
 using xzr::tuple::emplace_back_from_tuple;
 using xzr::tuple::make_from_tuple;
+using xzr::tuple::replace_at;
 using xzr::tuple::slide_window;
-using xzr::tuple::view::drop_front;
-using xzr::tuple::view::replace_at;
-using xzr::tuple::view::take_front;
+using xzr::tuple::take_front;
 
 using xzr_test::A;
 
@@ -33,9 +33,17 @@ namespace
 {
 BOOST_AUTO_TEST_CASE(test_make_from_tuple)
 {
-    const auto a = xzr::tuple::make_from_tuple<A>(make_vector(1, "2"s, 3, 4.0));
-    const auto b = A{1, "2"s, 3, 4.0};
-    BOOST_REQUIRE_EQUAL(a, b);
+    // single argument pack
+    BOOST_TEST(A{1} == xzr::tuple::make_from_tuple<A>(boost::fusion::make_vector(1)));
+    BOOST_TEST(A{1} == xzr::tuple::make_from_tuple<A>(std::make_tuple(1)));
+    // single argument pack with move-only
+    BOOST_TEST(A{make_unique<int>(1)} == xzr::tuple::make_from_tuple<A>(std::make_tuple(make_unique<int>(1))));
+    // argument pack
+    BOOST_TEST((A{1, "2"s, 3, 4.0}) == xzr::tuple::make_from_tuple<A>(boost::fusion::make_vector(1, "2"s, 3, 4.0)));
+    BOOST_TEST((A{1, "2"s, 3, 4.0}) == xzr::tuple::make_from_tuple<A>(std::make_tuple(1, "2"s, 3, 4.0)));
+    // argument pack with move-only
+    BOOST_TEST((A{1, "2"s, 3, 4.0, make_unique<int>(5)}) ==
+               xzr::tuple::make_from_tuple<A>(std::make_tuple(1, "2"s, 3, 4.0, make_unique<int>(5))));
 }
 
 BOOST_AUTO_TEST_CASE(test_emplace_back_from_tuple)
@@ -60,15 +68,6 @@ BOOST_AUTO_TEST_CASE(test_emplace_back_from_tuple)
     // argument pack with move-only
     emplace_back_from_tuple(std::make_tuple(1, "2"s, 3, 4.0, make_unique<int>(5)), as);
     BOOST_TEST(as.back() == (A{1, "2"s, 3, 4.0, make_unique<int>(5)}));
-    // move-only args does not work with fusion-sequences
-    // use std::tuple instead
-    //
-    // // single argument pack with move-only
-    // emplace_back_from_tuple(boost::fusion::make_vector(make_unique<int>(2)), as);
-    // BOOST_TEST(as.back() == A{make_unique<int>(2)});
-    // // argument pack with move-only
-    // emplace_back_from_tuple(boost::fusion::make_vector(1, "2"s, 3, 4.0, make_unique<int>(5)), as);
-    // BOOST_TEST(as.back() == (A{1, "2"s, 3, 4.0, make_unique<int>(5)}));
 }
 
 BOOST_AUTO_TEST_CASE(test_take_front)
