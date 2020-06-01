@@ -112,6 +112,13 @@ BOOST_AUTO_TEST_CASE(test_replace_at)
     BOOST_TEST((replace_at<0, 2>(a, b) == join(as_nview<0, 1>(b), as_nview<2, 3>(a))));
     BOOST_TEST((replace_at<1, 2>(a, b) == join(as_nview<0>(a), join(as_nview<1, 2>(b), as_nview<3>(a)))));
     BOOST_TEST((replace_at<2, 2>(a, b) == join(as_nview<0, 1>(a), as_nview<2, 3>(b))));
+
+    // explicit width = 3
+    BOOST_TEST((replace_at<0, 3>(a, b) == join(as_nview<0, 1, 2>(b), as_nview<3>(a))));
+    BOOST_TEST((replace_at<1, 3>(a, b) == join(as_nview<0>(a), as_nview<1, 2, 3>(b))));
+
+    // explicit width = 4
+    BOOST_TEST((replace_at<0, 4>(a, b) == b));
 }
 
 BOOST_AUTO_TEST_CASE(test_slide_window)
