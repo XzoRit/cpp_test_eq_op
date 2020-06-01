@@ -2,19 +2,14 @@
 
 #include <lib/utility.hpp>
 
-#include <boost/mp11.hpp>
-
+#include <boost/functional/value_factory.hpp>
 #include <boost/fusion/algorithm.hpp>
 #include <boost/fusion/container.hpp>
 #include <boost/fusion/functional.hpp>
 #include <boost/fusion/support.hpp>
 #include <boost/fusion/tuple.hpp>
 #include <boost/fusion/view.hpp>
-
-#include <boost/functional/value_factory.hpp>
-
-#include <boost/mp11/tuple.hpp>
-
+#include <boost/mp11.hpp>
 #include <boost/mpl/bool.hpp>
 
 #include <cstddef>

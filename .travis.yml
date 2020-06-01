@@ -7,9 +7,6 @@ matrix:
     # gcc-9
     - env: CC_COMPILER=gcc-9 CXX_COMPILER=g++-9 TOOLSET=gcc-9 BOOST_VERSION=1.72.0 CMAKE_OPTIONS="-DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON"
       addons: { apt: { packages: ["g++-9"], sources: ["ubuntu-toolchain-r-test"] } }
-    # clang-7
-    - env: CC_COMPILER=clang-7 CXX_COMPILER=clang++-7 TOOLSET=clang-7 BOOST_VERSION=1.72.0 CMAKE_OPTIONS="-DCMAKE_CXX_STANDARD=17 -DCMAKE_CXX_STANDARD_REQUIRED=ON"
-      addons: { apt: { packages: ["clang-7"], sources: ["ubuntu-toolchain-r-test", "llvm-toolchain-trusty-7"] } }
 
 install:
   ############################################################################
@@ -66,38 +63,6 @@ install:
   - export BOOST_ROOT=${BOOST_DIR}
   - b2 --version || true # b2 --version returns 1
 
-  ############################################################################
-  # Install libc++ and libc++abi if needed
-  ############################################################################
-  - |
-    if [[ "${CXX%%+*}" == "clang" ]]; then
-      if   [[ "${CXX}" == "clang++-3.5" ]]; then LLVM_VERSION="3.5.2";
-      elif [[ "${CXX}" == "clang++-3.6" ]]; then LLVM_VERSION="3.6.2";
-      elif [[ "${CXX}" == "clang++-3.7" ]]; then LLVM_VERSION="3.7.1";
-      elif [[ "${CXX}" == "clang++-3.8" ]]; then LLVM_VERSION="3.8.1";
-      elif [[ "${CXX}" == "clang++-3.9" ]]; then LLVM_VERSION="3.9.1";
-      elif [[ "${CXX}" == "clang++-4" ]]; then LLVM_VERSION="4.0.1";
-      elif [[ "${CXX}" == "clang++-5" ]]; then LLVM_VERSION="5.0.1";
-      elif [[ "${CXX}" == "clang++-7" ]]; then LLVM_VERSION="7.1.0";
-      fi
-
-      LLVM_URL="http://llvm.org/releases/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz"
-      LIBCXX_URL="http://llvm.org/releases/${LLVM_VERSION}/libcxx-${LLVM_VERSION}.src.tar.xz"
-      LIBCXXABI_URL="http://llvm.org/releases/${LLVM_VERSION}/libcxxabi-${LLVM_VERSION}.src.tar.xz"
-
-      mkdir -p llvm llvm/build llvm/projects/libcxx llvm/projects/libcxxabi
-      travis_retry wget -O - ${LLVM_URL} | tar --strip-components=1 -xJ -C llvm || exit 1
-      travis_retry wget -O - ${LIBCXX_URL} | tar --strip-components=1 -xJ -C llvm/projects/libcxx || exit 1
-      travis_retry wget -O - ${LIBCXXABI_URL} | tar --strip-components=1 -xJ -C llvm/projects/libcxxabi || exit 1
-      (cd llvm/build && cmake .. -DCMAKE_INSTALL_PREFIX=${DEPS_DIR}/llvm/install) || exit 1
-      (cd llvm/build/projects/libcxx && make install -j2) || exit 1
-      (cd llvm/build/projects/libcxxabi && make install -j2) || exit 1
-
-      export CXXFLAGS="-isystem ${DEPS_DIR}/llvm/install/include/c++/v1"
-      export LDFLAGS="-L ${DEPS_DIR}/llvm/install/lib -l c++ -l c++abi"
-      export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${DEPS_DIR}/llvm/install/lib"
-    fi
-
 before_script:
   ############################################################################
   # Build needed boost libs
@@ -108,11 +73,7 @@ before_script:
   ############################################################################
   - cd ${BOOST_DIR}
   - |
-    if [[ "${LDFLAGS}" == "" ]]; then
-      b2 --with-program_options --with-test toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" || exit 1
-    else
-      b2 --with-program_options --with-test toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" linkflags="${LDFLAGS}" || exit 1
-    fi
+    b2 --with-program_options --with-test toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" || exit 1
 
   ############################################################################
   # Go back to the root of the project and setup the build directory
@@ -154,8 +115,4 @@ script:
   ############################################################################
   - cd "${TRAVIS_BUILD_DIR}"
   - |
-    if [[ "${LDFLAGS}" == "" ]]; then
-      b2 --build-dir=./build_boost toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" || exit 1
-    else
-      b2 --build-dir=./build_boost toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" linkflags="${LDFLAGS}" || exit 1
-    fi
+    b2 --build-dir=./build_boost toolset=${TOOLSET} cxxflags="-std=c++17 ${CXXFLAGS}" || exit 1

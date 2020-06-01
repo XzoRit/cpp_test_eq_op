@@ -1,2 +1,2 @@
-[[https://travis-ci.org/XzoRit/cpp_starter][https://travis-ci.org/XzoRit/cpp_test_eq_op.svg?branch=master]]
+[[https://travis-ci.org/XzoRit/cpp_test_eq_op.svg?branch=master][https://travis-ci.org/XzoRit/cpp_test_eq_op.svg?branch=master]]
 * utility for testing correctness of implemented equality operators

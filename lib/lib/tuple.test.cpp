@@ -1,16 +1,15 @@
 #include <lib/a.test.hpp>
-
 #include <lib/tuple.hpp>
 
 #include <boost/fusion/container.hpp>
 #include <boost/fusion/view.hpp>
-
 #include <boost/smart_ptr/make_unique.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <iterator>
 #include <string>
+#include <vector>
 
 using namespace std::string_literals;
 
