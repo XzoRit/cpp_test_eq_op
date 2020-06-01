@@ -178,29 +178,18 @@ inline constexpr auto slide_window_c(Tuple&& a, Tuple&& b, OutIter out, boost::m
 }
 } // namespace impl
 
-template <std::size_t N>
-struct width : std::integral_constant<std::size_t, N>
-{
-};
-
 template <std::size_t Width, class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
-inline constexpr auto slide_window_c(Tuple&& a, Tuple&& b, OutIter out) -> void
+inline constexpr auto slide_window(Tuple&& a, Tuple&& b, OutIter out) -> void
 {
     constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
     static_assert(Width <= tuple_size, "width shall not be greater than size of tuple");
     impl::slide_window_c<Width>(a, b, out, boost::mp11::make_index_sequence<tuple_size - Width + 1>{});
 }
 
-template <class Width, class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
-inline constexpr auto slide_window(Tuple&& a, Tuple&& b, OutIter out) -> void
-{
-    slide_window_c<Width::value>(a, b, out);
-}
-
 template <class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
 inline constexpr auto slide_window(Tuple&& a, Tuple&& b, OutIter out) -> void
 {
-    slide_window_c<1>(a, b, out);
+    slide_window<1>(a, b, out);
 }
 } // namespace tuple
 } // namespace xzr

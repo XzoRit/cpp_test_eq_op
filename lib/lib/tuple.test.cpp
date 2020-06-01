@@ -23,7 +23,6 @@ using boost::make_unique;
 using xzr::tuple::emplace_back_from_tuple;
 using xzr::tuple::make_from_tuple;
 using xzr::tuple::slide_window;
-using xzr::tuple::width;
 using xzr::tuple::view::drop_front;
 using xzr::tuple::view::replace_at;
 using xzr::tuple::view::take_front;
@@ -131,18 +130,12 @@ BOOST_AUTO_TEST_CASE(test_slide_window)
             slide_window(a, b, std::begin(ints));
             BOOST_TEST(ints == exp);
         }
-        {
-            many_four_ints ints(exp.size());
-            slide_window<width<1>>(a, b, std::begin(ints));
-
-            BOOST_TEST(ints == exp);
-        }
     }
     {
         many_four_ints exp{four_ints{5, 6, 3, 4}, four_ints{1, 6, 7, 4}, four_ints{1, 2, 7, 8}};
 
         many_four_ints ints(exp.size());
-        slide_window<width<2>>(a, b, std::begin(ints));
+        slide_window<2>(a, b, std::begin(ints));
 
         BOOST_TEST(ints == exp);
     }
@@ -150,7 +143,7 @@ BOOST_AUTO_TEST_CASE(test_slide_window)
         many_four_ints exp{four_ints{5, 6, 7, 4}, four_ints{1, 6, 7, 8}};
 
         many_four_ints ints(exp.size());
-        slide_window<width<3>>(a, b, std::begin(ints));
+        slide_window<3>(a, b, std::begin(ints));
 
         BOOST_TEST(ints == exp);
     }
@@ -158,7 +151,7 @@ BOOST_AUTO_TEST_CASE(test_slide_window)
         many_four_ints exp{four_ints{5, 6, 7, 8}};
 
         many_four_ints ints(exp.size());
-        slide_window<width<4>>(a, b, std::begin(ints));
+        slide_window<4>(a, b, std::begin(ints));
 
         BOOST_TEST(ints == exp);
     }

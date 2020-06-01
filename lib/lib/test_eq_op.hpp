@@ -21,7 +21,7 @@ inline auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
     constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
     std::vector<TT> ts{};
     ts.reserve(tuple_size);
-    xzr::tuple::slide_window<xzr::tuple::width<1>>(a, b, std::back_inserter(ts));
+    xzr::tuple::slide_window<1>(a, b, std::back_inserter(ts));
 
     std::vector<A> as{};
     as.reserve(tuple_size);
