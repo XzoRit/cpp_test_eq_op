@@ -10,6 +10,14 @@ namespace xzr_test
 {
 struct A
 {
+    explicit A(int aa)
+        : a{aa}
+    {
+    }
+    explicit A(std::unique_ptr<int> ee)
+        : e{std::move(ee)}
+    {
+    }
     A(int aa, std::string bb, int cc, double dd, std::unique_ptr<int> ee = nullptr)
         : a{aa}
         , b{bb}

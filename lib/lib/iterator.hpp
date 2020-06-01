@@ -1,7 +1,8 @@
 #pragma once
 
-#include <memory>
-#include <type_traits>
+#include <lib/tuple.hpp>
+
+#include <iterator>
 #include <utility>
 
 namespace xzr
@@ -9,21 +10,20 @@ namespace xzr
 namespace iterator
 {
 template <typename Container>
-class back_emplace_iterator
+class back_emplace_iterator : public std::iterator<std::output_iterator_tag, void, void, void, void>
 {
   public:
+    using container_type = Container;
+
     explicit back_emplace_iterator(Container& c)
-        : container{std::addressof(c)}
+        : container{c}
     {
     }
 
-    template <typename... Args>
-    back_emplace_iterator& operator=(Args&&... args)
+    template <class Args>
+    back_emplace_iterator& operator=(Args&& args)
     {
-        static_assert(std::is_constructible<typename Container::value_type, Args...>::value,
-                      "value_type should be constructible from args");
-
-        container->emplace_back(std::forward<Args>(args)...);
+        xzr::tuple::emplace_back_from_tuple(std::forward<Args>(args), container);
         return *this;
     }
 
@@ -43,7 +43,7 @@ class back_emplace_iterator
     }
 
   private:
-    Container* container{nullptr};
+    Container& container;
 };
 
 template <typename Container>

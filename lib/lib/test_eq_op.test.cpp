@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE(test_create_test_objects)
     A as[] = {{5, "2"s, 3, 4.0}, {1, "6"s, 3, 4.0}, {1, "2"s, 7, 4.0}, {1, "2"s, 3, 8.0}};
     const std::vector<A> expected{std::make_move_iterator(std::begin(as)), std::make_move_iterator(std::end(as))};
 
-    BOOST_TEST((objs == expected));
+    BOOST_TEST(objs == expected);
 }
 
 BOOST_AUTO_TEST_CASE(test_test_eq_op)

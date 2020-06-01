@@ -1,5 +1,6 @@
 #pragma once
 
+#include <lib/iterator.hpp>
 #include <lib/tuple.hpp>
 
 #include <boost/fusion/container.hpp>
@@ -18,10 +19,13 @@ template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>
 inline auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
 {
     constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
+    std::vector<TT> ts{};
+    ts.reserve(tuple_size);
+    xzr::tuple::slide_window<xzr::tuple::width<1>>(a, b, std::back_inserter(ts));
+
     std::vector<A> as{};
     as.reserve(tuple_size);
-
-    xzr::tuple::slide_window_with<1>(a, b, [&](const auto& a) { xzr::tuple::emplace_back_from_tuple(a, as); });
+    std::copy(std::begin(ts), std::end(ts), xzr::iterator::back_emplacer(as));
 
     return as;
 }
@@ -43,5 +47,5 @@ inline auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
             return false;
     return true;
 }
-} // namespace test
+} // namespace xzr
 } // namespace xzr

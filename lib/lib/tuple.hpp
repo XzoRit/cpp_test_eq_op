@@ -7,13 +7,17 @@
 #include <boost/fusion/algorithm.hpp>
 #include <boost/fusion/container.hpp>
 #include <boost/fusion/functional.hpp>
+#include <boost/fusion/support.hpp>
 #include <boost/fusion/tuple.hpp>
 #include <boost/fusion/view.hpp>
 
 #include <boost/functional/value_factory.hpp>
 
+#include <boost/mp11/tuple.hpp>
+
 #include <cstddef>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -26,20 +30,34 @@ namespace impl
 template <class Container>
 struct emplace_back_t
 {
-    template <class... A>
-    void operator()(A&&... a)
+    template <class... Args>
+    void operator()(Args&&... args)
     {
-        container.emplace_back(std::forward<A>(a)...);
+        container.emplace_back(std::forward<Args>(args)...);
     }
     Container& container{};
 };
 } // namespace impl
-
-template <class Tuple, class Container>
-inline void emplace_back_from_tuple(Tuple&& args, Container& out)
+template <class... Args, class Container>
+inline void emplace_back_from_tuple(std::tuple<Args...>&& args, Container& out)
 {
-    impl::emplace_back_t<Container> emp{out};
-    boost::fusion::invoke_function_object(emp, std::forward<Tuple>(args));
+    boost::mp11::tuple_apply(impl::emplace_back_t<Container>{out}, std::forward<std::tuple<Args...>>(args));
+}
+
+template <class FusionSeq, class Container, class FS = typename std::remove_reference<FusionSeq>::type>
+inline typename std::enable_if<boost::fusion::traits::is_sequence<FS>::type::value>::type emplace_back_from_tuple(
+    FusionSeq&& seq,
+    Container& out)
+{
+    boost::fusion::invoke_function_object(impl::emplace_back_t<Container>{out}, std::forward<FusionSeq>(seq));
+}
+
+template <class Arg, class Container, class AA = typename std::remove_reference<Arg>::type>
+inline typename std::enable_if<!boost::fusion::traits::is_sequence<AA>::type::value>::type emplace_back_from_tuple(
+    Arg&& arg,
+    Container& out)
+{
+    out.emplace_back(std::forward<Arg>(arg));
 }
 } // namespace tuple
 } // namespace xzr
@@ -152,20 +170,37 @@ namespace tuple
 {
 namespace impl
 {
-template <std::size_t Width, class Tuple, class UnFunc, std::size_t... Is>
-inline constexpr auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc, boost::mp11::index_sequence<Is...>) -> void
+template <std::size_t Width, class Tuple, class OutIter, std::size_t... Is>
+inline constexpr auto slide_window_c(Tuple&& a, Tuple&& b, OutIter out, boost::mp11::index_sequence<Is...>) -> void
 {
-    int dummy[] = {0, (unFunc(xzr::tuple::view::replace_at<Is, Width>(a, b)), 0)...};
+    int dummy[] = {0, ((*out++ = xzr::tuple::view::replace_at<Is, Width>(a, b)), 0)...};
     static_cast<void>(dummy);
 }
 } // namespace impl
 
-template <std::size_t Width, class Tuple, class UnFunc, class TT = typename std::remove_reference<Tuple>::type>
-inline constexpr auto slide_window_with(Tuple&& a, Tuple&& b, UnFunc unFunc) -> void
+template <std::size_t N>
+struct width : std::integral_constant<std::size_t, N>
+{
+};
+
+template <std::size_t Width, class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
+inline constexpr auto slide_window_c(Tuple&& a, Tuple&& b, OutIter out) -> void
 {
     constexpr auto tuple_size{boost::fusion::tuple_size<TT>::value};
-    static_assert(Width <= tuple_size, "width is greater than tuple size");
-    impl::slide_window_with<Width>(a, b, unFunc, boost::mp11::make_index_sequence<tuple_size>{});
+    static_assert(Width <= tuple_size, "width shall not be greater than size of tuple");
+    impl::slide_window_c<Width>(a, b, out, boost::mp11::make_index_sequence<tuple_size - Width + 1>{});
+}
+
+template <class Width, class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
+inline constexpr auto slide_window(Tuple&& a, Tuple&& b, OutIter out) -> void
+{
+    slide_window_c<Width::value>(a, b, out);
+}
+
+template <class Tuple, class OutIter, class TT = typename std::remove_reference<Tuple>::type>
+inline constexpr auto slide_window(Tuple&& a, Tuple&& b, OutIter out) -> void
+{
+    slide_window_c<1>(a, b, out);
 }
 } // namespace tuple
 } // namespace xzr
