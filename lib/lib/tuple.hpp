@@ -35,24 +35,24 @@ struct emplace_back_t
     Container& container{};
 };
 } // namespace impl
-template <class... Args, class Container>
-inline void emplace_back_from_tuple(std::tuple<Args...>&& args, Container& out)
+template <class Container, class... Args>
+inline void emplace_back_from_tuple(Container& out, std::tuple<Args...>&& args)
 {
     boost::mp11::tuple_apply(impl::emplace_back_t<Container>{out}, std::forward<std::tuple<Args...>>(args));
 }
 
-template <class FusionSeq, class Container, class FS = typename std::remove_reference<FusionSeq>::type>
+template <class Container, class FusionSeq, class FS = typename std::remove_reference<FusionSeq>::type>
 inline typename std::enable_if<boost::fusion::traits::is_sequence<FS>::type::value>::type emplace_back_from_tuple(
-    FusionSeq&& seq,
-    Container& out)
+    Container& out,
+    FusionSeq&& seq)
 {
     boost::fusion::invoke_function_object(impl::emplace_back_t<Container>{out}, std::forward<FusionSeq>(seq));
 }
 
-template <class Arg, class Container, class AA = typename std::remove_reference<Arg>::type>
+template <class Container, class Arg, class AA = typename std::remove_reference<Arg>::type>
 inline typename std::enable_if<!boost::fusion::traits::is_sequence<AA>::type::value>::type emplace_back_from_tuple(
-    Arg&& arg,
-    Container& out)
+    Container& out,
+    Arg&& arg)
 {
     out.emplace_back(std::forward<Arg>(arg));
 }

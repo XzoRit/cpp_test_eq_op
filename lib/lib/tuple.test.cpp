@@ -50,22 +50,22 @@ BOOST_AUTO_TEST_CASE(test_emplace_back_from_tuple)
     std::vector<A> as{};
 
     // single arg
-    emplace_back_from_tuple(1, as);
+    emplace_back_from_tuple(as, 1);
     BOOST_TEST(as.back() == A{1});
     // single move-only arg
-    emplace_back_from_tuple(make_unique<int>(2), as);
+    emplace_back_from_tuple(as, make_unique<int>(2));
     BOOST_TEST(as.back() == A{make_unique<int>(2)});
     // single argument pack
-    emplace_back_from_tuple(boost::fusion::make_vector(1), as);
+    emplace_back_from_tuple(as, boost::fusion::make_vector(1));
     BOOST_TEST(as.back() == A{1});
     // single argument pack with move-only
-    emplace_back_from_tuple(std::make_tuple(make_unique<int>(1)), as);
+    emplace_back_from_tuple(as, std::make_tuple(make_unique<int>(1)));
     BOOST_TEST(as.back() == A{make_unique<int>(1)});
     // argument pack
-    emplace_back_from_tuple(boost::fusion::make_vector(1, "2"s, 3, 4.0), as);
+    emplace_back_from_tuple(as, boost::fusion::make_vector(1, "2"s, 3, 4.0));
     BOOST_TEST(as.back() == (A{1, "2"s, 3, 4.0}));
     // argument pack with move-only
-    emplace_back_from_tuple(std::make_tuple(1, "2"s, 3, 4.0, make_unique<int>(5)), as);
+    emplace_back_from_tuple(as, std::make_tuple(1, "2"s, 3, 4.0, make_unique<int>(5)));
     BOOST_TEST(as.back() == (A{1, "2"s, 3, 4.0, make_unique<int>(5)}));
 }
 
