@@ -225,7 +225,7 @@ inline back_emplace_iterator<Container> back_emplacer(Container& c)
 template <class A, class Tuple, class TT = typename std::remove_reference<Tuple>::type>
 inline auto create_test_objects(Tuple&& a, Tuple&& b) -> std::vector<A>
 {
-    constexpr auto size{tuple_size<Tuple>::value};
+    constexpr auto size = tuple_size<Tuple>::value;
     TT ts[size] = {};
     slide(a, b, std::begin(ts));
 
@@ -245,8 +245,8 @@ inline constexpr auto ctor_params(Args&&... args) -> decltype(std::make_tuple(st
 template <class A, class Tuple>
 inline auto test_eq_op(Tuple&& a, Tuple&& b) -> bool
 {
-    const auto& origin{boost::mp11::construct_from_tuple<A>(a)};
-    const auto& c{create_test_objects<A>(a, b)};
+    const auto& origin = boost::mp11::construct_from_tuple<A>(a);
+    const auto& c = create_test_objects<A>(a, b);
     for (const auto& it : c)
         if (origin == it && !(origin != it))
             return false;
@@ -261,14 +261,15 @@ struct A
         : a{aa}
         , b{bb}
         , c{cc}
-        , d{std::move(dd)}
+    //, d{std::move(dd)}
     {
     }
 
     int a{};
     int b{};
     int c{};
-    std::unique_ptr<int> d{};
+    // std::unique_ptr<int> d{};
+    int* d{nullptr};
 };
 
 bool operator==(const A& a, const A& b)
@@ -386,7 +387,7 @@ BOOST_AUTO_TEST_CASE(test_slide)
     Tuples c{};
     {
         slide(a, b, std::back_inserter(c));
-        const Tuples d = {{4, 22, 333}, {1, 55, 333}, {1, 22, 666}};
+        Tuples d{Tuple{4, 22, 333}, Tuple{1, 55, 333}, Tuple{1, 22, 666}};
         BOOST_TEST(d == c);
     }
 }
